@@ -141,7 +141,7 @@ export function WeekCalendarGrid({
             className="w-full border border-dashed border-slate-300 hover:border-indigo-500 hover:bg-indigo-50/50 rounded-xl py-1.5 text-slate-400 hover:text-indigo-600 font-semibold text-xs transition-all flex items-center justify-center gap-1 group mt-1"
           >
             <Plus className="w-3.5 h-3.5 group-hover:scale-110 transition-transform" />
-            <span>+ Nova</span>
+            <span>Nova</span>
           </button>
         )}
       </div>
