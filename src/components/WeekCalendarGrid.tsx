@@ -104,31 +104,39 @@ export function WeekCalendarGrid({
                     isMine ? 'border-indigo-300 ring-1 ring-indigo-200 bg-indigo-50/30' : 'border-slate-200'
                   }`}
                 >
-                  <div className="flex items-center space-x-2 truncate">
-                    <span className="p-1 bg-indigo-50 rounded-md shrink-0">
-                      <Monitor className="w-3.5 h-3.5 text-indigo-600" />
+                  <div className="flex items-center space-x-2 truncate min-w-0 pr-1">
+                    <span className="p-1.5 bg-indigo-50 rounded-lg shrink-0">
+                      <Monitor className="w-4 h-4 text-indigo-600" />
                     </span>
                     <div className="truncate">
-                      <span className="text-xs font-bold block truncate">{b.professorName}</span>
-                      <span className="text-[10px] text-slate-500 font-medium block">
-                        {b.resourceName.split('(')[0]} {b.turma ? `• ${b.turma}` : ''}
+                      <span className="text-xs font-extrabold text-slate-900 block truncate">{b.professorName}</span>
+                      <span className="text-[10px] text-slate-500 font-medium block truncate">
+                        {b.resourceName.split('(')[0]}
                       </span>
                     </div>
                   </div>
 
-                  {canDelete ? (
-                    <button
-                      onClick={() => handleDeleteBooking(b.id, b.professorName)}
-                      className="text-slate-300 hover:text-rose-600 hover:bg-rose-50 p-1 rounded-md transition-colors shrink-0"
-                      title={isAdmin ? 'Excluir horário (Admin)' : 'Cancelar minha reserva'}
-                    >
-                      <Trash2 className="w-3.5 h-3.5" />
-                    </button>
-                  ) : (
-                    <span title="Reservado por outro professor (Apenas o próprio professor ou admin pode cancelar)">
-                      <Lock className="w-3.5 h-3.5 text-slate-300 shrink-0 ml-1" />
-                    </span>
-                  )}
+                  <div className="flex items-center space-x-2 shrink-0 ml-2">
+                    {b.turma && (
+                      <span className="font-black text-sm text-indigo-800 bg-indigo-100 px-2.5 py-0.5 rounded-lg border border-indigo-300/80 shadow-sm tracking-wide">
+                        {b.turma}
+                      </span>
+                    )}
+
+                    {canDelete ? (
+                      <button
+                        onClick={() => handleDeleteBooking(b.id, b.professorName)}
+                        className="text-slate-300 hover:text-rose-600 hover:bg-rose-50 p-1 rounded-md transition-colors shrink-0"
+                        title={isAdmin ? 'Excluir horário (Admin)' : 'Cancelar minha reserva'}
+                      >
+                        <Trash2 className="w-3.5 h-3.5" />
+                      </button>
+                    ) : (
+                      <span title="Reservado por outro professor (Apenas o próprio professor ou admin pode cancelar)">
+                        <Lock className="w-3.5 h-3.5 text-slate-300 shrink-0" />
+                      </span>
+                    )}
+                  </div>
                 </div>
               );
             })}
