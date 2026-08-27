@@ -1,0 +1,60 @@
+{
+  "resources": [
+    {
+      "id": "res-lab-inf",
+      "name": "Laboratório de Informática",
+      "type": "room",
+      "totalQuantity": 1,
+      "description": "Laboratório principal com 30 computadores.",
+      "active": true
+    },
+    {
+      "id": "res-1787775914294",
+      "name": "Lousa Digital - 1º Andar",
+      "type": "equipment",
+      "totalQuantity": 1,
+      "description": "Lousa Digital TV",
+      "active": true
+    },
+    {
+      "id": "res-1787775934041",
+      "name": "Lousa Digital - 2º Andar",
+      "type": "equipment",
+      "totalQuantity": 1,
+      "description": "Lousa Digital TV",
+      "active": true
+    }
+  ],
+  "users": [
+    {
+      "id": "usr-admin",
+      "name": "Administrador Pedro Rizzi",
+      "email": "admin@pedrorizzi.edu.br",
+      "avatar": "https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=150",
+      "role": "admin"
+    },
+    {
+      "id": "usr-prof-1",
+      "name": "Soraya Luiza de Barros",
+      "email": "soraya.barros@pedrorizzi.edu.br",
+      "avatar": "https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=150",
+      "role": "professor"
+    },
+    {
+      "id": "usr-prof-2",
+      "name": "André Luiz Dalsochio Gomes",
+      "email": "andre.gomes@pedrorizzi.edu.br",
+      "avatar": "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=150",
+      "role": "professor"
+    },
+    {
+      "id": "usr-prof-3",
+      "name": "Elevi Cortolini",
+      "email": "elevi.cortolini@pedrorizzi.edu.br",
+      "avatar": "https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150",
+      "role": "professor"
+    }
+  ],
+  "bookings": [],
+  "blocks": []
+}
