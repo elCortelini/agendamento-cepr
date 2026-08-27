@@ -64,29 +64,38 @@ export default function AdminPanelPage() {
 
   const handleCreateResource = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!newResName.trim()) return;
+    if (!newResName.trim()) {
+      alert('Por favor, informe o nome do recurso.');
+      return;
+    }
 
     try {
       const res = await fetch('/api/resources', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          name: newResName,
+          name: newResName.trim(),
           type: newResType,
-          totalQuantity: newResQty,
-          description: newResDesc,
+          totalQuantity: newResQty || 1,
+          description: newResDesc.trim(),
         }),
       });
 
-      if (res.ok) {
+      const data = await res.json();
+
+      if (res.ok && data.resource) {
         setNewResName('');
         setNewResDesc('');
         setNewResQty(1);
         setShowAddForm(false);
-        fetchAdminData();
+        await fetchAdminData();
+        alert('Recurso cadastrado com sucesso!');
+      } else {
+        alert(data.error || 'Erro ao cadastrar recurso.');
       }
-    } catch (e) {
+    } catch (e: any) {
       console.error('Error adding resource:', e);
+      alert('Erro de conexão ao salvar recurso.');
     }
   };
 

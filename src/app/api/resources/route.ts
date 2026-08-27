@@ -12,17 +12,17 @@ export async function POST(request: Request) {
     const body = await request.json();
     const { name, type, totalQuantity, description } = body;
 
-    if (!name || !type || !totalQuantity) {
-      return NextResponse.json({ error: 'Campos obrigatórios ausentes' }, { status: 400 });
+    if (!name || !type) {
+      return NextResponse.json({ error: 'Nome e Tipo do recurso são obrigatórios' }, { status: 400 });
     }
 
     const db = readDB();
     const newResource: Resource = {
       id: `res-${Date.now()}`,
-      name,
+      name: name.trim(),
       type,
-      totalQuantity: Number(totalQuantity),
-      description: description || '',
+      totalQuantity: totalQuantity ? Math.max(1, Number(totalQuantity)) : 1,
+      description: (description || '').trim(),
       active: true,
     };
 
@@ -31,7 +31,8 @@ export async function POST(request: Request) {
 
     return NextResponse.json({ resource: newResource });
   } catch (error) {
-    return NextResponse.json({ error: 'Erro ao criar recurso' }, { status: 500 });
+    console.error('Error in POST /api/resources:', error);
+    return NextResponse.json({ error: 'Erro interno ao criar recurso' }, { status: 500 });
   }
 }
 
@@ -49,10 +50,10 @@ export async function PUT(request: Request) {
 
     db.resources[index] = {
       ...db.resources[index],
-      name: name ?? db.resources[index].name,
+      name: name ? name.trim() : db.resources[index].name,
       type: type ?? db.resources[index].type,
       totalQuantity: totalQuantity ? Number(totalQuantity) : db.resources[index].totalQuantity,
-      description: description ?? db.resources[index].description,
+      description: description !== undefined ? description.trim() : db.resources[index].description,
       active: active !== undefined ? active : db.resources[index].active,
     };
 
