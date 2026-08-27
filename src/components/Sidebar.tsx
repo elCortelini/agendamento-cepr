@@ -1,14 +1,15 @@
 'use client';
 
-import React from 'react';
+import React, { useState } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useAuth } from './GoogleAuthProvider';
-import { Calendar, CheckSquare, Shield, LogOut } from 'lucide-react';
+import { Calendar, CheckSquare, Shield, LogOut, Menu, X, User as UserIcon } from 'lucide-react';
 
 export function Sidebar() {
   const pathname = usePathname();
   const { user, logout, switchRole } = useAuth();
+  const [isOpenMobile, setIsOpenMobile] = useState(false);
 
   const getInitials = (name?: string) => {
     if (!name) return 'CEPR';
@@ -17,22 +18,32 @@ export function Sidebar() {
     return name.slice(0, 2).toUpperCase();
   };
 
-  return (
-    <aside className="w-64 bg-[#111625] text-white flex flex-col justify-between shrink-0 h-screen sticky top-0 border-r border-slate-800 z-30 font-sans">
+  const navContent = (
+    <div className="flex flex-col justify-between h-full font-sans">
       {/* Top Header Logo */}
       <div>
-        <div className="p-5 flex items-center space-x-3 border-b border-slate-800/60">
-          <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-indigo-600 to-purple-600 flex items-center justify-center text-white font-black text-xs shadow-lg shadow-indigo-900/40 shrink-0 tracking-wider">
-            CEPR
+        <div className="p-5 flex items-center justify-between border-b border-slate-800/60">
+          <div className="flex items-center space-x-3">
+            <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-indigo-600 to-purple-600 flex items-center justify-center text-white font-black text-xs shadow-lg shadow-indigo-900/40 shrink-0 tracking-wider">
+              CEPR
+            </div>
+            <div className="overflow-hidden">
+              <h1 className="font-extrabold text-sm text-white tracking-tight leading-tight truncate">
+                Agenda CEPR
+              </h1>
+              <span className="text-[11px] text-slate-400 font-medium block truncate">
+                CE Pedro Rizzi
+              </span>
+            </div>
           </div>
-          <div className="overflow-hidden">
-            <h1 className="font-extrabold text-sm text-white tracking-tight leading-tight truncate">
-              Agenda CEPR
-            </h1>
-            <span className="text-[11px] text-slate-400 font-medium block truncate">
-              CE Pedro Rizzi
-            </span>
-          </div>
+
+          {/* Close button for mobile */}
+          <button
+            onClick={() => setIsOpenMobile(false)}
+            className="md:hidden text-slate-400 hover:text-white p-1"
+          >
+            <X className="w-6 h-6" />
+          </button>
         </div>
 
         {/* Navigation Menu */}
@@ -44,6 +55,7 @@ export function Sidebar() {
             <nav className="space-y-1.5">
               <Link
                 href="/"
+                onClick={() => setIsOpenMobile(false)}
                 className={`flex items-center space-x-3 px-3.5 py-2.5 rounded-xl text-xs font-bold transition-all ${
                   pathname === '/'
                     ? 'bg-indigo-600 text-white shadow-md shadow-indigo-950/50'
@@ -56,6 +68,7 @@ export function Sidebar() {
 
               <Link
                 href="/minhas-reservas"
+                onClick={() => setIsOpenMobile(false)}
                 className={`flex items-center space-x-3 px-3.5 py-2.5 rounded-xl text-xs font-bold transition-all ${
                   pathname === '/minhas-reservas'
                     ? 'bg-indigo-600 text-white shadow-md shadow-indigo-950/50'
@@ -69,6 +82,7 @@ export function Sidebar() {
               {user?.role === 'admin' && (
                 <Link
                   href="/admin"
+                  onClick={() => setIsOpenMobile(false)}
                   className={`flex items-center space-x-3 px-3.5 py-2.5 rounded-xl text-xs font-bold transition-all ${
                     pathname === '/admin'
                       ? 'bg-indigo-600 text-white shadow-md shadow-indigo-950/50'
@@ -102,7 +116,10 @@ export function Sidebar() {
 
             <div className="flex items-center gap-2">
               <button
-                onClick={() => logout()}
+                onClick={() => {
+                  logout();
+                  setIsOpenMobile(false);
+                }}
                 className="flex-1 flex items-center justify-center space-x-1.5 bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-semibold py-1.5 px-3 rounded-lg transition-colors"
               >
                 <LogOut className="w-3.5 h-3.5" />
@@ -129,6 +146,61 @@ export function Sidebar() {
           </div>
         )}
       </div>
-    </aside>
+    </div>
+  );
+
+  return (
+    <>
+      {/* MOBILE TOP BAR (visible on screens < 768px) */}
+      <div className="md:hidden bg-[#111625] text-white px-4 py-3 flex items-center justify-between border-b border-slate-800 sticky top-0 z-40 w-full shadow-md">
+        <div className="flex items-center space-x-3">
+          <div className="w-8 h-8 rounded-lg bg-indigo-600 flex items-center justify-center text-white font-black text-xs tracking-wider">
+            CEPR
+          </div>
+          <div>
+            <span className="font-extrabold text-sm text-white block leading-none">
+              Agenda CEPR
+            </span>
+            <span className="text-[10px] text-slate-400 font-medium">CE Pedro Rizzi</span>
+          </div>
+        </div>
+
+        <div className="flex items-center space-x-2">
+          {user && (
+            <span className="text-[10px] bg-indigo-950 text-indigo-300 border border-indigo-800 px-2 py-0.5 rounded-full font-bold uppercase">
+              {user.role === 'admin' ? 'Admin' : 'Prof'}
+            </span>
+          )}
+          <button
+            onClick={() => setIsOpenMobile(!isOpenMobile)}
+            className="p-2 rounded-lg text-slate-300 hover:text-white hover:bg-slate-800 transition-colors"
+            aria-label="Abrir Menu"
+          >
+            {isOpenMobile ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
+          </button>
+        </div>
+      </div>
+
+      {/* MOBILE DRAWER OVERLAY */}
+      {isOpenMobile && (
+        <div className="md:hidden fixed inset-0 z-50 flex">
+          {/* Backdrop */}
+          <div
+            className="fixed inset-0 bg-black/60 backdrop-blur-sm"
+            onClick={() => setIsOpenMobile(false)}
+          />
+
+          {/* Drawer Body */}
+          <div className="relative w-72 bg-[#111625] h-full shadow-2xl z-10 animate-in slide-in-from-left duration-200">
+            {navContent}
+          </div>
+        </div>
+      )}
+
+      {/* DESKTOP SIDEBAR (visible on screens >= 768px) */}
+      <aside className="hidden md:flex w-64 bg-[#111625] text-white flex-col justify-between shrink-0 h-screen sticky top-0 border-r border-slate-800 z-30 font-sans">
+        {navContent}
+      </aside>
+    </>
   );
 }
