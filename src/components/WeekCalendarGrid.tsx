@@ -71,25 +71,25 @@ export function WeekCalendarGrid({
     );
 
     return (
-      <div className="space-y-1.5 min-h-[90px] flex flex-col justify-between p-2">
+      <div className="space-y-1 min-h-[44px] flex flex-col justify-center p-0.5">
         {slotBlock ? (
-          <div className="bg-slate-200/90 border border-slate-300 rounded-xl p-2.5 flex items-center justify-between text-slate-700 shadow-sm group">
-            <div className="flex items-center space-x-2 truncate">
-              <span className="p-1 bg-slate-300 rounded-md shrink-0">
-                <Lock className="w-3.5 h-3.5 text-slate-600" />
+          <div className="bg-slate-200/90 border border-slate-300 rounded-lg p-1.5 flex items-center justify-between text-slate-700 shadow-sm group">
+            <div className="flex items-center space-x-1.5 truncate">
+              <span className="p-0.5 bg-slate-300 rounded shrink-0">
+                <Lock className="w-3 h-3 text-slate-600" />
               </span>
-              <span className="text-xs font-bold truncate">{slotBlock.reason || 'Pré-Conselho'}</span>
+              <span className="text-[11px] font-bold truncate">{slotBlock.reason || 'Pré-Conselho'}</span>
             </div>
             {user?.role === 'admin' ? (
               <button
                 onClick={() => handleDeleteBlock(slotBlock.id)}
-                className="text-slate-400 hover:text-rose-600 p-1 rounded transition-colors"
+                className="text-slate-400 hover:text-rose-600 p-0.5 rounded transition-colors"
                 title="Remover Bloqueio (Admin)"
               >
-                <Trash2 className="w-3.5 h-3.5" />
+                <Trash2 className="w-3 h-3" />
               </button>
             ) : (
-              <Lock className="w-3.5 h-3.5 text-slate-400 shrink-0 ml-1" />
+              <Lock className="w-3 h-3 text-slate-400 shrink-0 ml-1" />
             )}
           </div>
         ) : slotBookings.length > 0 ? (
@@ -102,25 +102,25 @@ export function WeekCalendarGrid({
               return (
                 <div
                   key={b.id}
-                  className={`bg-white border rounded-xl p-2.5 shadow-sm text-slate-800 flex items-center justify-between transition-all ${
-                    isMine ? 'border-indigo-300 ring-1 ring-indigo-200 bg-indigo-50/30' : 'border-slate-200'
+                  className={`bg-white border rounded-lg p-1.5 shadow-sm text-slate-800 flex items-center justify-between transition-all ${
+                    isMine ? 'border-indigo-300 ring-1 ring-indigo-200 bg-indigo-50/40' : 'border-slate-200'
                   }`}
                 >
-                  <div className="flex items-center space-x-2 truncate min-w-0 pr-1">
-                    <span className="p-1.5 bg-indigo-50 rounded-lg shrink-0">
-                      <Monitor className="w-4 h-4 text-indigo-600" />
+                  <div className="flex items-center space-x-1.5 truncate min-w-0 pr-1">
+                    <span className="p-1 bg-indigo-50 rounded shrink-0">
+                      <Monitor className="w-3.5 h-3.5 text-indigo-600" />
                     </span>
-                    <div className="truncate">
-                      <span className="text-xs font-extrabold text-slate-900 block truncate">{b.professorName}</span>
-                      <span className="text-[10px] text-slate-500 font-medium block truncate">
+                    <div className="truncate leading-tight">
+                      <span className="text-[11px] font-extrabold text-slate-900 block truncate">{b.professorName}</span>
+                      <span className="text-[9px] text-slate-500 font-medium block truncate">
                         {b.resourceName.split('(')[0]}
                       </span>
                     </div>
                   </div>
 
-                  <div className="flex items-center space-x-1.5 shrink-0 ml-2">
+                  <div className="flex items-center space-x-1 shrink-0 ml-1">
                     {b.turma && (
-                      <span className="font-black text-sm text-indigo-800 bg-indigo-100 px-2.5 py-0.5 rounded-lg border border-indigo-300/80 shadow-sm tracking-wide">
+                      <span className="font-black text-xs text-indigo-800 bg-indigo-100 px-1.5 py-0.5 rounded border border-indigo-300/80 shadow-2xs tracking-wide">
                         {b.turma}
                       </span>
                     )}
@@ -128,24 +128,24 @@ export function WeekCalendarGrid({
                     {canModify && onEditBooking && (
                       <button
                         onClick={() => onEditBooking(b)}
-                        className="text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 p-1 rounded-md transition-colors shrink-0"
+                        className="text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 p-0.5 rounded transition-colors shrink-0"
                         title={isAdmin ? 'Editar reserva (Admin)' : 'Editar minha reserva'}
                       >
-                        <Edit3 className="w-3.5 h-3.5" />
+                        <Edit3 className="w-3 h-3" />
                       </button>
                     )}
 
                     {canModify ? (
                       <button
                         onClick={() => handleDeleteBooking(b.id, b.professorName)}
-                        className="text-slate-300 hover:text-rose-600 hover:bg-rose-50 p-1 rounded-md transition-colors shrink-0"
+                        className="text-slate-300 hover:text-rose-600 hover:bg-rose-50 p-0.5 rounded transition-colors shrink-0"
                         title={isAdmin ? 'Excluir horário (Admin)' : 'Cancelar minha reserva'}
                       >
-                        <Trash2 className="w-3.5 h-3.5" />
+                        <Trash2 className="w-3 h-3" />
                       </button>
                     ) : (
                       <span title="Reservado por outro professor">
-                        <Lock className="w-3.5 h-3.5 text-slate-300 shrink-0" />
+                        <Lock className="w-3 h-3 text-slate-300 shrink-0" />
                       </span>
                     )}
                   </div>
@@ -158,9 +158,9 @@ export function WeekCalendarGrid({
         {!slotBlock && (
           <button
             onClick={() => onSelectSlot(dateStr, periodId)}
-            className="w-full border border-dashed border-slate-300 hover:border-indigo-500 hover:bg-indigo-50/50 rounded-xl py-1.5 text-slate-400 hover:text-indigo-600 font-semibold text-xs transition-all flex items-center justify-center gap-1 group mt-1"
+            className="w-full border border-dashed border-slate-300 hover:border-indigo-500 hover:bg-indigo-50/50 rounded-lg py-1 text-slate-400 hover:text-indigo-600 font-semibold text-[11px] transition-all flex items-center justify-center gap-1 group"
           >
-            <Plus className="w-3.5 h-3.5 group-hover:scale-110 transition-transform" />
+            <Plus className="w-3 h-3 group-hover:scale-110 transition-transform" />
             <span>Nova</span>
           </button>
         )}
@@ -181,17 +181,17 @@ export function WeekCalendarGrid({
                 return (
                   <th
                     key={dateStr}
-                    className={`p-3.5 text-center border-l transition-all ${
+                    className={`p-2 text-center border-l transition-all ${
                       isToday
                         ? 'bg-amber-500 text-slate-950 font-black border-amber-400 shadow-md'
                         : 'bg-indigo-600 text-white border-indigo-500/40'
                     }`}
                   >
-                    <div className="capitalize font-black text-sm">{format(day, 'EEEE', { locale: ptBR })}</div>
-                    <div className="text-[11px] font-normal opacity-90 mt-0.5 flex items-center justify-center gap-1">
+                    <div className="capitalize font-black text-xs">{format(day, 'EEEE', { locale: ptBR })}</div>
+                    <div className="text-[10px] font-normal opacity-90 mt-0.5 flex items-center justify-center gap-1">
                       <span>{format(day, 'dd/MM')}</span>
                       {isToday && (
-                        <span className="bg-slate-950 text-amber-300 font-black text-[9px] px-1.5 py-0.2 rounded-full uppercase tracking-wider ml-1">
+                        <span className="bg-slate-950 text-amber-300 font-black text-[8px] px-1.5 py-0.2 rounded-full uppercase tracking-wider ml-1">
                           HOJE
                         </span>
                       )}
@@ -203,17 +203,17 @@ export function WeekCalendarGrid({
           </thead>
 
           <tbody>
-            <tr className="bg-indigo-600 text-white font-extrabold text-xs uppercase tracking-widest">
-              <td colSpan={6} className="px-4 py-2 bg-indigo-700 border-t border-indigo-500">
+            <tr className="bg-indigo-600 text-white font-extrabold text-[10px] uppercase tracking-widest">
+              <td colSpan={6} className="px-3 py-1 bg-indigo-700 border-t border-indigo-500">
                 MANHÃ
               </td>
             </tr>
 
             {morningPeriods.map((period) => (
               <tr key={period.id} className="border-t border-slate-200">
-                <td className="p-2 bg-slate-50 font-bold text-xs text-slate-700 text-center border-r border-slate-200">
-                  <div className="text-indigo-700 font-black text-xs">{period.number}</div>
-                  <div className="text-[10px] text-slate-500 font-mono mt-0.5 whitespace-nowrap">
+                <td className="p-1 bg-slate-50 font-bold text-xs text-slate-700 text-center border-r border-slate-200">
+                  <div className="text-indigo-700 font-black text-xs leading-tight">{period.number}</div>
+                  <div className="text-[9px] text-slate-500 font-mono mt-0.5 whitespace-nowrap">
                     {period.startTime} - {period.endTime}
                   </div>
                 </td>
@@ -225,7 +225,7 @@ export function WeekCalendarGrid({
                   return (
                     <td
                       key={dateStr}
-                      className={`p-1.5 border-l border-slate-200 align-top ${
+                      className={`p-1 border-l border-slate-200 align-top ${
                         isToday ? 'bg-amber-50/70 border-amber-300/60' : 'bg-white'
                       }`}
                     >
@@ -236,17 +236,17 @@ export function WeekCalendarGrid({
               </tr>
             ))}
 
-            <tr className="bg-indigo-600 text-white font-extrabold text-xs uppercase tracking-widest border-t-2 border-indigo-700">
-              <td colSpan={6} className="px-4 py-2 bg-indigo-700">
+            <tr className="bg-indigo-600 text-white font-extrabold text-[10px] uppercase tracking-widest border-t-2 border-indigo-700">
+              <td colSpan={6} className="px-3 py-1 bg-indigo-700">
                 TARDE
               </td>
             </tr>
 
             {afternoonPeriods.map((period) => (
               <tr key={period.id} className="border-t border-slate-200">
-                <td className="p-2 bg-slate-50 font-bold text-xs text-slate-700 text-center border-r border-slate-200">
-                  <div className="text-indigo-700 font-black text-xs">{period.number}</div>
-                  <div className="text-[10px] text-slate-500 font-mono mt-0.5 whitespace-nowrap">
+                <td className="p-1 bg-slate-50 font-bold text-xs text-slate-700 text-center border-r border-slate-200">
+                  <div className="text-indigo-700 font-black text-xs leading-tight">{period.number}</div>
+                  <div className="text-[9px] text-slate-500 font-mono mt-0.5 whitespace-nowrap">
                     {period.startTime} - {period.endTime}
                   </div>
                 </td>
@@ -258,7 +258,7 @@ export function WeekCalendarGrid({
                   return (
                     <td
                       key={dateStr}
-                      className={`p-1.5 border-l border-slate-200 align-top ${
+                      className={`p-1 border-l border-slate-200 align-top ${
                         isToday ? 'bg-amber-50/70 border-amber-300/60' : 'bg-white'
                       }`}
                     >
