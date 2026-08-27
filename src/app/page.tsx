@@ -2,13 +2,13 @@
 
 import React, { useState, useEffect } from 'react';
 import { Resource, Booking, Block } from '@/lib/types';
+import { DataService } from '@/lib/dataService';
 import { WeekCalendarGrid } from '@/components/WeekCalendarGrid';
 import { CalendarGrid } from '@/components/CalendarGrid';
 import { BookingModal } from '@/components/BookingModal';
 import { BlockModal } from '@/components/BlockModal';
 import { useAuth } from '@/components/GoogleAuthProvider';
 import {
-  Calendar as CalendarIcon,
   ChevronLeft,
   ChevronRight,
   Plus,
@@ -17,7 +17,6 @@ import {
   CalendarDays,
 } from 'lucide-react';
 import { format, startOfWeek, addDays, subDays, addWeeks, subWeeks } from 'date-fns';
-import { ptBR } from 'date-fns/locale';
 
 export default function HomePage() {
   const { user } = useAuth();
@@ -34,29 +33,18 @@ export default function HomePage() {
   const [isBlockOpen, setIsBlockOpen] = useState(false);
   const [selectedSlot, setSelectedSlot] = useState<{ resourceId?: string; periodId?: string; date?: string }>({});
 
-  // Compute Monday-Friday for the current week
-  const weekStart = startOfWeek(currentDate, { weekStartsOn: 1 }); // Monday
+  const weekStart = startOfWeek(currentDate, { weekStartsOn: 1 });
   const weekDays = [0, 1, 2, 3, 4].map((i) => addDays(weekStart, i));
 
   const weekRangeText = `${format(weekDays[0], 'dd/MM')} - ${format(weekDays[4], 'dd/MM')}`;
   const selectedDateStr = format(currentDate, 'yyyy-MM-dd');
 
-  const fetchData = async () => {
+  const fetchData = () => {
     setLoading(true);
     try {
-      const [resRes, bookRes, blockRes] = await Promise.all([
-        fetch('/api/resources'),
-        fetch('/api/bookings'),
-        fetch('/api/blocks'),
-      ]);
-
-      const resData = await resRes.json();
-      const bookData = await bookRes.json();
-      const blockData = await blockRes.json();
-
-      setResources(resData.resources || []);
-      setBookings(bookData.bookings || []);
-      setBlocks(blockData.blocks || []);
+      setResources(DataService.getResources());
+      setBookings(DataService.getBookings());
+      setBlocks(DataService.getBlocks());
     } catch (e) {
       console.error('Error fetching dashboard data:', e);
     } finally {

@@ -2,6 +2,7 @@
 
 import React, { useState } from 'react';
 import { Resource, DEFAULT_PERIODS } from '@/lib/types';
+import { DataService } from '@/lib/dataService';
 import { Lock, AlertTriangle, ShieldCheck } from 'lucide-react';
 
 interface BlockModalProps {
@@ -22,7 +23,7 @@ export function BlockModal({ isOpen, onClose, onSuccess, resources, initialDate 
 
   if (!isOpen) return null;
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
 
@@ -34,34 +35,28 @@ export function BlockModal({ isOpen, onClose, onSuccess, resources, initialDate 
     setLoading(true);
 
     try {
-      const res = await fetch('/api/blocks', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          resourceId,
-          date,
-          periodId,
-          reason,
-        }),
+      const res = resourceId === 'all' ? null : resources.find((r) => r.id === resourceId);
+
+      DataService.saveBlock({
+        resourceId,
+        resourceName: res ? res.name : 'Todos os Recursos',
+        date,
+        periodId,
+        reason,
+        createdBy: 'admin@pedrorizzi.edu.br',
       });
-
-      const data = await res.json();
-
-      if (!res.ok) {
-        throw new Error(data.error || 'Erro ao criar bloqueio.');
-      }
 
       onSuccess();
       onClose();
     } catch (err: any) {
-      setError(err.message || 'Erro de conexão.');
+      setError(err.message || 'Erro ao criar bloqueio.');
     } finally {
       setLoading(false);
     }
   };
 
   return (
-    <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+    <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4 font-sans">
       <div className="bg-white rounded-3xl max-w-lg w-full p-6 shadow-2xl border border-gray-100 relative animate-in fade-in zoom-in-95">
         <button
           onClick={onClose}
@@ -71,12 +66,12 @@ export function BlockModal({ isOpen, onClose, onSuccess, resources, initialDate 
         </button>
 
         <div className="flex items-center space-x-3 mb-6">
-          <div className="w-12 h-12 rounded-2xl bg-amber-100 text-amber-700 flex items-center justify-center shadow-inner">
+          <div className="w-12 h-12 rounded-2xl bg-amber-100 text-amber-700 flex items-center justify-center shadow-inner shrink-0">
             <Lock className="w-6 h-6" />
           </div>
           <div>
             <h2 className="text-xl font-extrabold text-gray-900">Bloquear Horário / Recurso</h2>
-            <p className="text-xs text-gray-500">Bloqueio Administrativo por Manutenção ou Evento Escola</p>
+            <p className="text-xs text-gray-500">Bloqueio Administrativo por Manutenção ou Evento</p>
           </div>
         </div>
 
@@ -146,7 +141,7 @@ export function BlockModal({ isOpen, onClose, onSuccess, resources, initialDate 
               rows={3}
               value={reason}
               onChange={(e) => setReason(e.target.value)}
-              placeholder="Ex: Manutenção preventiva na rede wi-fi / Reunião Geral de Professores."
+              placeholder="Ex: Pré-Conselho / Manutenção preventiva."
               className="w-full bg-slate-50 border border-gray-200 rounded-xl px-3 py-2.5 text-sm text-gray-900 focus:ring-2 focus:ring-amber-500 outline-none resize-none"
             />
           </div>

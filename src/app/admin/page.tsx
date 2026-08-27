@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { Resource, Booking, Block } from '@/lib/types';
+import { DataService } from '@/lib/dataService';
 import { useAuth } from '@/components/GoogleAuthProvider';
 import { BlockModal } from '@/components/BlockModal';
 import {
@@ -35,22 +36,12 @@ export default function AdminPanelPage() {
   // Block modal
   const [isBlockOpen, setIsBlockOpen] = useState(false);
 
-  const fetchAdminData = async () => {
+  const fetchAdminData = () => {
     setLoading(true);
     try {
-      const [resR, bookR, blockR] = await Promise.all([
-        fetch('/api/resources'),
-        fetch('/api/bookings'),
-        fetch('/api/blocks'),
-      ]);
-
-      const resD = await resR.json();
-      const bookD = await bookR.json();
-      const blockD = await blockR.json();
-
-      setResources(resD.resources || []);
-      setBookings(bookD.bookings || []);
-      setBlocks(blockD.blocks || []);
+      setResources(DataService.getResources());
+      setBookings(DataService.getBookings());
+      setBlocks(DataService.getBlocks());
     } catch (e) {
       console.error('Error fetching admin data:', e);
     } finally {
@@ -62,7 +53,7 @@ export default function AdminPanelPage() {
     fetchAdminData();
   }, []);
 
-  const handleCreateResource = async (e: React.FormEvent) => {
+  const handleCreateResource = (e: React.FormEvent) => {
     e.preventDefault();
     if (!newResName.trim()) {
       alert('Por favor, informe o nome do recurso.');
@@ -70,61 +61,49 @@ export default function AdminPanelPage() {
     }
 
     try {
-      const res = await fetch('/api/resources', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          name: newResName.trim(),
-          type: newResType,
-          totalQuantity: newResQty || 1,
-          description: newResDesc.trim(),
-        }),
+      DataService.saveResource({
+        name: newResName.trim(),
+        type: newResType,
+        totalQuantity: newResQty || 1,
+        description: newResDesc.trim(),
       });
 
-      const data = await res.json();
-
-      if (res.ok && data.resource) {
-        setNewResName('');
-        setNewResDesc('');
-        setNewResQty(1);
-        setShowAddForm(false);
-        await fetchAdminData();
-        alert('Recurso cadastrado com sucesso!');
-      } else {
-        alert(data.error || 'Erro ao cadastrar recurso.');
-      }
+      setNewResName('');
+      setNewResDesc('');
+      setNewResQty(1);
+      setShowAddForm(false);
+      fetchAdminData();
+      alert('Recurso cadastrado com sucesso!');
     } catch (e: any) {
       console.error('Error adding resource:', e);
-      alert('Erro de conexão ao salvar recurso.');
+      alert('Erro ao salvar recurso.');
     }
   };
 
-  const handleToggleResourceActive = async (id: string, active: boolean) => {
-    try {
-      await fetch('/api/resources', {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ id, active: !active }),
+  const handleToggleResourceActive = (id: string, active: boolean) => {
+    const res = resources.find((r) => r.id === id);
+    if (res) {
+      DataService.saveResource({
+        ...res,
+        active: !active,
       });
       fetchAdminData();
-    } catch (e) {
-      console.error('Error updating resource:', e);
     }
   };
 
-  const handleDeleteResource = async (id: string) => {
+  const handleDeleteResource = (id: string) => {
     if (!confirm('Tem certeza que deseja excluir este recurso?')) return;
     try {
-      await fetch(`/api/resources?id=${id}`, { method: 'DELETE' });
+      DataService.deleteResource(id);
       fetchAdminData();
     } catch (e) {
       console.error('Error deleting resource:', e);
     }
   };
 
-  const handleDeleteBlock = async (id: string) => {
+  const handleDeleteBlock = (id: string) => {
     try {
-      await fetch(`/api/blocks?id=${id}`, { method: 'DELETE' });
+      DataService.deleteBlock(id);
       fetchAdminData();
     } catch (e) {
       console.error('Error deleting block:', e);
@@ -285,7 +264,7 @@ export default function AdminPanelPage() {
                     required
                     value={newResName}
                     onChange={(e) => setNewResName(e.target.value)}
-                    placeholder="Ex: Sala de Vídeo 2"
+                    placeholder="Ex: TV Lousa Digital"
                     className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2 text-xs font-bold outline-none"
                   />
                 </div>
@@ -299,7 +278,7 @@ export default function AdminPanelPage() {
                   >
                     <option value="room">Espaço / Sala / Lab</option>
                     <option value="tablet">Carrinho de Tablets / Chromebooks</option>
-                    <option value="equipment">Projetor / Kit de Som</option>
+                    <option value="equipment">Projetor / Kit de Som / Lousa Digital</option>
                   </select>
                 </div>
 
@@ -322,7 +301,7 @@ export default function AdminPanelPage() {
                   type="text"
                   value={newResDesc}
                   onChange={(e) => setNewResDesc(e.target.value)}
-                  placeholder="Ex: Sala equipada com Smart TV."
+                  placeholder="Ex: TV Lousa Digital interativa."
                   className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2 text-xs font-medium outline-none"
                 />
               </div>

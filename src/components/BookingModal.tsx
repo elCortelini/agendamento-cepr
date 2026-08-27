@@ -1,9 +1,10 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { Resource, Period, DEFAULT_PERIODS } from '@/lib/types';
+import { Resource, DEFAULT_PERIODS } from '@/lib/types';
+import { DataService } from '@/lib/dataService';
 import { useAuth } from './GoogleAuthProvider';
-import { Calendar, Clock, BookOpen, AlertCircle, Check, Repeat, Sparkles } from 'lucide-react';
+import { AlertCircle, Check, Repeat, Sparkles } from 'lucide-react';
 import { format, addWeeks } from 'date-fns';
 
 interface BookingModalProps {
@@ -44,7 +45,6 @@ export function BookingModal({
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
-  // Auto select valid resource when modal opens or resources load
   useEffect(() => {
     if (initialResourceId) {
       setResourceId(initialResourceId);
@@ -65,7 +65,7 @@ export function BookingModal({
     }
   }, [user]);
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
 
@@ -76,37 +76,29 @@ export function BookingModal({
       return;
     }
 
+    const selectedResource = resources.find((r) => r.id === targetResourceId);
+    const selectedPeriod = DEFAULT_PERIODS.find((p) => p.id === periodId);
+
     setLoading(true);
 
     try {
-      const res = await fetch('/api/bookings', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          resourceId: targetResourceId,
-          date,
-          periodId,
-          quantity: 1,
-          professorName,
-          professorEmail,
-          turma,
-          justification,
-          isRecurring,
-          recurrenceDays: 7,
-          recurrenceUntilDate: isRecurring ? recurrenceUntilDate : undefined,
-        }),
+      DataService.saveBooking({
+        resourceId: targetResourceId,
+        resourceName: selectedResource ? selectedResource.name : 'Recurso Escolar',
+        date,
+        periodId,
+        periodName: selectedPeriod ? selectedPeriod.name : periodId,
+        quantity: 1,
+        professorName,
+        professorEmail,
+        turma,
+        justification,
       });
-
-      const data = await res.json();
-
-      if (!res.ok) {
-        throw new Error(data.error || 'Erro ao realizar reserva.');
-      }
 
       onSuccess();
       onClose();
     } catch (err: any) {
-      setError(err.message || 'Erro ao conectar ao servidor.');
+      setError(err.message || 'Erro ao realizar reserva.');
     } finally {
       setLoading(false);
     }
@@ -115,8 +107,8 @@ export function BookingModal({
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4 overflow-y-auto">
-      <div className="bg-white rounded-3xl max-w-xl w-full p-6 shadow-2xl border border-gray-100 relative animate-in fade-in zoom-in-95 my-8 font-sans">
+    <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4 overflow-y-auto font-sans">
+      <div className="bg-white rounded-3xl max-w-xl w-full p-6 shadow-2xl border border-gray-100 relative animate-in fade-in zoom-in-95 my-8">
         <button
           onClick={onClose}
           className="absolute top-5 right-5 text-gray-400 hover:text-gray-600 font-bold w-8 h-8 rounded-full bg-gray-100 flex items-center justify-center transition-colors"

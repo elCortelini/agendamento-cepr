@@ -2,8 +2,9 @@
 
 import React from 'react';
 import { Resource, Booking, Block, DEFAULT_PERIODS } from '@/lib/types';
+import { DataService } from '@/lib/dataService';
 import { useAuth } from './GoogleAuthProvider';
-import { Lock, Plus, Monitor, Trash2, ShieldAlert } from 'lucide-react';
+import { Lock, Plus, Monitor, Trash2 } from 'lucide-react';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 
@@ -30,32 +31,24 @@ export function WeekCalendarGrid({
 
   const todayStr = format(new Date(), 'yyyy-MM-dd');
 
-  const handleDeleteBooking = async (bookingId: string, professorName: string) => {
+  const handleDeleteBooking = (bookingId: string, professorName: string) => {
     const isSelf = user?.role === 'admin' ? 'como Administrador' : 'sua própria reserva';
     if (!confirm(`Confirmar exclusão da reserva de ${professorName} (${isSelf})?`)) return;
 
     try {
-      const res = await fetch(
-        `/api/bookings?id=${bookingId}&userEmail=${encodeURIComponent(user?.email || '')}&userRole=${user?.role}`,
-        { method: 'DELETE' }
-      );
-      const data = await res.json();
-      if (!res.ok) {
-        alert(data.error || 'Não foi possível excluir.');
-        return;
-      }
+      DataService.deleteBooking(bookingId);
       onRefresh();
     } catch (e) {
       alert('Erro ao excluir a reserva.');
     }
   };
 
-  const handleDeleteBlock = async (blockId: string) => {
+  const handleDeleteBlock = (blockId: string) => {
     if (user?.role !== 'admin') return;
     if (!confirm('Confirmar remoção deste bloqueio administrativo?')) return;
 
     try {
-      await fetch(`/api/blocks?id=${blockId}`, { method: 'DELETE' });
+      DataService.deleteBlock(blockId);
       onRefresh();
     } catch (e) {
       alert('Erro ao remover o bloqueio.');
@@ -142,7 +135,6 @@ export function WeekCalendarGrid({
           </div>
         ) : null}
 
-        {/* Dash Nova Button */}
         {!slotBlock && (
           <button
             onClick={() => onSelectSlot(dateStr, periodId)}
