@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import { Resource, Period, DEFAULT_PERIODS } from '@/lib/types';
 import { useAuth } from './GoogleAuthProvider';
-import { Calendar, Clock, Users, BookOpen, AlertCircle, Check, Repeat, Sparkles } from 'lucide-react';
+import { Calendar, Clock, BookOpen, AlertCircle, Check, Repeat, Sparkles } from 'lucide-react';
 import { format, addWeeks } from 'date-fns';
 
 interface BookingModalProps {
@@ -28,9 +28,8 @@ export function BookingModal({
   const { user } = useAuth();
 
   const [resourceId, setResourceId] = useState(initialResourceId || resources[0]?.id || '');
-  const [periodId, setPeriodId] = useState(initialPeriodId || DEFAULT_PERIODS[0].id);
+  const [periodId, setPeriodId] = useState(initialPeriodId || DEFAULT_PERIODS[0]?.id || 'mat-1');
   const [date, setDate] = useState(initialDate);
-  const [quantity, setQuantity] = useState(1);
   const [professorName, setProfessorName] = useState(user?.name || '');
   const [professorEmail, setProfessorEmail] = useState(user?.email || '');
   const [turma, setTurma] = useState('');
@@ -39,17 +38,25 @@ export function BookingModal({
   // Recurrence state
   const [isRecurring, setIsRecurring] = useState(false);
   const [recurrenceUntilDate, setRecurrenceUntilDate] = useState(
-    format(addWeeks(new Date(initialDate), 4), 'yyyy-MM-dd')
+    format(addWeeks(new Date(initialDate || new Date()), 4), 'yyyy-MM-dd')
   );
 
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
+  // Auto select valid resource when modal opens or resources load
   useEffect(() => {
-    if (initialResourceId) setResourceId(initialResourceId);
+    if (initialResourceId) {
+      setResourceId(initialResourceId);
+    } else if (resources.length > 0 && (!resourceId || !resources.some((r) => r.id === resourceId))) {
+      setResourceId(resources[0].id);
+    }
+  }, [initialResourceId, resources, isOpen]);
+
+  useEffect(() => {
     if (initialPeriodId) setPeriodId(initialPeriodId);
     if (initialDate) setDate(initialDate);
-  }, [initialResourceId, initialPeriodId, initialDate]);
+  }, [initialPeriodId, initialDate, isOpen]);
 
   useEffect(() => {
     if (user) {
@@ -58,14 +65,14 @@ export function BookingModal({
     }
   }, [user]);
 
-  const selectedResource = resources.find((r) => r.id === resourceId);
-
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
 
-    if (!resourceId || !periodId || !date || !quantity || !professorName || !professorEmail || !turma) {
-      setError('Por favor, preencha todos os campos obrigatórios.');
+    const targetResourceId = resourceId || (resources.length > 0 ? resources[0].id : '');
+
+    if (!targetResourceId || !periodId || !date || !professorName || !professorEmail || !turma) {
+      setError('Por favor, preencha todos os campos obrigatórios (Recurso, Data, Horário, Nome e Turma).');
       return;
     }
 
@@ -76,10 +83,10 @@ export function BookingModal({
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          resourceId,
+          resourceId: targetResourceId,
           date,
           periodId,
-          quantity: Number(quantity),
+          quantity: 1,
           professorName,
           professorEmail,
           turma,
@@ -109,7 +116,7 @@ export function BookingModal({
 
   return (
     <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4 overflow-y-auto">
-      <div className="bg-white rounded-3xl max-w-xl w-full p-6 shadow-2xl border border-gray-100 relative animate-in fade-in zoom-in-95 my-8">
+      <div className="bg-white rounded-3xl max-w-xl w-full p-6 shadow-2xl border border-gray-100 relative animate-in fade-in zoom-in-95 my-8 font-sans">
         <button
           onClick={onClose}
           className="absolute top-5 right-5 text-gray-400 hover:text-gray-600 font-bold w-8 h-8 rounded-full bg-gray-100 flex items-center justify-center transition-colors"
@@ -118,7 +125,7 @@ export function BookingModal({
         </button>
 
         <div className="flex items-center space-x-3 mb-6">
-          <div className="w-12 h-12 rounded-2xl bg-indigo-100 text-indigo-600 flex items-center justify-center shadow-inner">
+          <div className="w-12 h-12 rounded-2xl bg-indigo-100 text-indigo-600 flex items-center justify-center shadow-inner shrink-0">
             <Sparkles className="w-6 h-6" />
           </div>
           <div>
@@ -143,19 +150,19 @@ export function BookingModal({
               Recurso Escolar *
             </label>
             <select
-              value={resourceId}
-              onChange={(e) => {
-                setResourceId(e.target.value);
-                const r = resources.find((x) => x.id === e.target.value);
-                if (r) setQuantity(1);
-              }}
+              value={resourceId || (resources[0]?.id || '')}
+              onChange={(e) => setResourceId(e.target.value)}
               className="w-full bg-slate-50 border border-gray-200 rounded-xl px-3 py-2.5 text-sm font-semibold text-gray-900 focus:ring-2 focus:ring-indigo-500 focus:bg-white transition-all outline-none"
             >
-              {resources.map((res) => (
-                <option key={res.id} value={res.id}>
-                  {res.name} (Disp: {res.totalQuantity} {res.type === 'tablet' ? 'unidades' : 'vagas'})
-                </option>
-              ))}
+              {resources.length === 0 ? (
+                <option value="">Carregando recursos...</option>
+              ) : (
+                resources.map((res) => (
+                  <option key={res.id} value={res.id}>
+                    {res.name}
+                  </option>
+                ))
+              )}
             </select>
           </div>
 
@@ -189,35 +196,6 @@ export function BookingModal({
                 ))}
               </select>
             </div>
-          </div>
-
-          {/* Quantity Selection */}
-          <div>
-            <div className="flex justify-between items-center mb-1">
-              <label className="block text-xs font-bold text-gray-700 uppercase tracking-wider">
-                Quantidade Solicitada *
-              </label>
-              <span className="text-xs font-bold text-indigo-600 bg-indigo-50 px-2 py-0.5 rounded-full">
-                {quantity} {selectedResource?.type === 'tablet' ? 'Tablets/Chromebooks' : 'Vaga'}
-              </span>
-            </div>
-            {selectedResource && selectedResource.totalQuantity > 1 ? (
-              <input
-                type="number"
-                min="1"
-                max={selectedResource.totalQuantity}
-                value={quantity}
-                onChange={(e) => setQuantity(Math.max(1, Number(e.target.value)))}
-                className="w-full bg-slate-50 border border-gray-200 rounded-xl px-3 py-2.5 text-sm font-bold text-gray-900 focus:ring-2 focus:ring-indigo-500 focus:bg-white transition-all outline-none"
-              />
-            ) : (
-              <input
-                type="text"
-                disabled
-                value="1 (Reserva exclusiva do espaço)"
-                className="w-full bg-gray-100 border border-gray-200 rounded-xl px-3 py-2.5 text-sm font-medium text-gray-500"
-              />
-            )}
           </div>
 
           {/* Professor & Turma */}
