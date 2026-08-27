@@ -159,23 +159,30 @@ export function WeekCalendarGrid({
   return (
     <div className="bg-white rounded-2xl shadow-xl border border-slate-200 overflow-hidden font-sans">
       <div className="overflow-x-auto">
-        <table className="w-full border-collapse min-w-[900px]">
+        <table className="w-full border-collapse table-fixed min-w-[950px]">
           <thead>
             <tr className="bg-indigo-600 text-white text-xs uppercase font-extrabold tracking-wider">
-              <th className="p-3.5 text-left w-36 bg-indigo-700">Período</th>
+              <th className="p-3.5 text-left w-[15%] bg-indigo-700">Período</th>
               {weekDays.map((day) => {
                 const dateStr = format(day, 'yyyy-MM-dd');
                 const isToday = dateStr === todayStr;
                 return (
                   <th
                     key={dateStr}
-                    className={`p-3.5 text-center border-l border-indigo-500/40 ${
-                      isToday ? 'bg-indigo-500 text-white font-black' : 'bg-indigo-600'
+                    className={`p-3.5 text-center w-[17%] border-l transition-all ${
+                      isToday
+                        ? 'bg-amber-500 text-slate-950 font-black border-amber-400 shadow-md'
+                        : 'bg-indigo-600 text-white border-indigo-500/40'
                     }`}
                   >
-                    <div className="capitalize">{format(day, 'EEEE', { locale: ptBR })}</div>
-                    <div className="text-[11px] font-normal opacity-90 mt-0.5">
-                      {format(day, 'dd/MM')} {isToday ? '(Hoje)' : ''}
+                    <div className="capitalize font-black text-sm">{format(day, 'EEEE', { locale: ptBR })}</div>
+                    <div className="text-[11px] font-normal opacity-90 mt-0.5 flex items-center justify-center gap-1">
+                      <span>{format(day, 'dd/MM')}</span>
+                      {isToday && (
+                        <span className="bg-slate-950 text-amber-300 font-black text-[9px] px-1.5 py-0.2 rounded-full uppercase tracking-wider ml-1">
+                          HOJE
+                        </span>
+                      )}
                     </div>
                   </th>
                 );
@@ -207,7 +214,7 @@ export function WeekCalendarGrid({
                     <td
                       key={dateStr}
                       className={`p-1.5 border-l border-slate-200 align-top ${
-                        isToday ? 'bg-indigo-50/20' : 'bg-white'
+                        isToday ? 'bg-amber-50/70 border-amber-300/60' : 'bg-white'
                       }`}
                     >
                       {renderSlotContent(day, period.id)}
@@ -240,7 +247,7 @@ export function WeekCalendarGrid({
                     <td
                       key={dateStr}
                       className={`p-1.5 border-l border-slate-200 align-top ${
-                        isToday ? 'bg-indigo-50/20' : 'bg-white'
+                        isToday ? 'bg-amber-50/70 border-amber-300/60' : 'bg-white'
                       }`}
                     >
                       {renderSlotContent(day, period.id)}
