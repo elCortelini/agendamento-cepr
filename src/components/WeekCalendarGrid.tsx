@@ -162,14 +162,14 @@ export function WeekCalendarGrid({
         <table className="w-full border-collapse table-fixed min-w-[950px]">
           <thead>
             <tr className="bg-indigo-600 text-white text-xs uppercase font-extrabold tracking-wider">
-              <th className="p-3.5 text-left w-[15%] bg-indigo-700">Período</th>
+              <th className="p-2 text-center w-[85px] bg-indigo-700">Período</th>
               {weekDays.map((day) => {
                 const dateStr = format(day, 'yyyy-MM-dd');
                 const isToday = dateStr === todayStr;
                 return (
                   <th
                     key={dateStr}
-                    className={`p-3.5 text-center w-[17%] border-l transition-all ${
+                    className={`p-3.5 text-center border-l transition-all ${
                       isToday
                         ? 'bg-amber-500 text-slate-950 font-black border-amber-400 shadow-md'
                         : 'bg-indigo-600 text-white border-indigo-500/40'
@@ -199,9 +199,9 @@ export function WeekCalendarGrid({
 
             {morningPeriods.map((period) => (
               <tr key={period.id} className="border-t border-slate-200">
-                <td className="p-3 bg-slate-50 font-bold text-xs text-slate-700 middle border-r border-slate-200">
-                  <div className="text-indigo-700 font-extrabold text-sm">{period.number}</div>
-                  <div className="text-[11px] text-slate-500 font-mono mt-0.5">
+                <td className="p-2 bg-slate-50 font-bold text-xs text-slate-700 text-center border-r border-slate-200">
+                  <div className="text-indigo-700 font-black text-xs">{period.number}</div>
+                  <div className="text-[10px] text-slate-500 font-mono mt-0.5 whitespace-nowrap">
                     {period.startTime} - {period.endTime}
                   </div>
                 </td>
@@ -232,9 +232,9 @@ export function WeekCalendarGrid({
 
             {afternoonPeriods.map((period) => (
               <tr key={period.id} className="border-t border-slate-200">
-                <td className="p-3 bg-slate-50 font-bold text-xs text-slate-700 middle border-r border-slate-200">
-                  <div className="text-indigo-700 font-extrabold text-sm">{period.number}</div>
-                  <div className="text-[11px] text-slate-500 font-mono mt-0.5">
+                <td className="p-2 bg-slate-50 font-bold text-xs text-slate-700 text-center border-r border-slate-200">
+                  <div className="text-indigo-700 font-black text-xs">{period.number}</div>
+                  <div className="text-[10px] text-slate-500 font-mono mt-0.5 whitespace-nowrap">
                     {period.startTime} - {period.endTime}
                   </div>
                 </td>
