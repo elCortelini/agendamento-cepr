@@ -1,10 +1,10 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { Resource, DEFAULT_PERIODS } from '@/lib/types';
+import { Resource, Booking, DEFAULT_PERIODS } from '@/lib/types';
 import { DataService } from '@/lib/dataService';
 import { useAuth } from './GoogleAuthProvider';
-import { AlertCircle, Check, Repeat, Sparkles } from 'lucide-react';
+import { AlertCircle, Check, Repeat, Sparkles, Edit3 } from 'lucide-react';
 import { format, addWeeks } from 'date-fns';
 
 interface BookingModalProps {
@@ -15,6 +15,7 @@ interface BookingModalProps {
   initialResourceId?: string;
   initialPeriodId?: string;
   initialDate: string;
+  bookingToEdit?: Booking | null;
 }
 
 export function BookingModal({
@@ -25,6 +26,7 @@ export function BookingModal({
   initialResourceId,
   initialPeriodId,
   initialDate,
+  bookingToEdit,
 }: BookingModalProps) {
   const { user } = useAuth();
 
@@ -45,25 +47,30 @@ export function BookingModal({
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
+  // Auto select valid resource or populate from bookingToEdit
   useEffect(() => {
-    if (initialResourceId) {
-      setResourceId(initialResourceId);
-    } else if (resources.length > 0 && (!resourceId || !resources.some((r) => r.id === resourceId))) {
-      setResourceId(resources[0].id);
+    if (bookingToEdit) {
+      setResourceId(bookingToEdit.resourceId);
+      setPeriodId(bookingToEdit.periodId);
+      setDate(bookingToEdit.date);
+      setProfessorName(bookingToEdit.professorName);
+      setProfessorEmail(bookingToEdit.professorEmail);
+      setTurma(bookingToEdit.turma || '');
+      setJustification(bookingToEdit.justification || '');
+    } else {
+      if (initialResourceId) {
+        setResourceId(initialResourceId);
+      } else if (resources.length > 0 && (!resourceId || !resources.some((r) => r.id === resourceId))) {
+        setResourceId(resources[0].id);
+      }
+      if (initialPeriodId) setPeriodId(initialPeriodId);
+      if (initialDate) setDate(initialDate);
+      if (user) {
+        setProfessorName(user.name);
+        setProfessorEmail(user.email);
+      }
     }
-  }, [initialResourceId, resources, isOpen]);
-
-  useEffect(() => {
-    if (initialPeriodId) setPeriodId(initialPeriodId);
-    if (initialDate) setDate(initialDate);
-  }, [initialPeriodId, initialDate, isOpen]);
-
-  useEffect(() => {
-    if (user) {
-      setProfessorName(user.name);
-      setProfessorEmail(user.email);
-    }
-  }, [user]);
+  }, [bookingToEdit, initialResourceId, initialPeriodId, initialDate, resources, isOpen, user]);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -82,18 +89,37 @@ export function BookingModal({
     setLoading(true);
 
     try {
-      DataService.saveBooking({
-        resourceId: targetResourceId,
-        resourceName: selectedResource ? selectedResource.name : 'Recurso Escolar',
-        date,
-        periodId,
-        periodName: selectedPeriod ? selectedPeriod.name : periodId,
-        quantity: 1,
-        professorName,
-        professorEmail,
-        turma,
-        justification,
-      });
+      if (bookingToEdit) {
+        // Update existing booking
+        DataService.deleteBooking(bookingToEdit.id);
+        DataService.saveBooking({
+          id: bookingToEdit.id,
+          resourceId: targetResourceId,
+          resourceName: selectedResource ? selectedResource.name : 'Recurso Escolar',
+          date,
+          periodId,
+          periodName: selectedPeriod ? selectedPeriod.name : periodId,
+          quantity: 1,
+          professorName,
+          professorEmail,
+          turma,
+          justification,
+        });
+      } else {
+        // Create new booking
+        DataService.saveBooking({
+          resourceId: targetResourceId,
+          resourceName: selectedResource ? selectedResource.name : 'Recurso Escolar',
+          date,
+          periodId,
+          periodName: selectedPeriod ? selectedPeriod.name : periodId,
+          quantity: 1,
+          professorName,
+          professorEmail,
+          turma,
+          justification,
+        });
+      }
 
       onSuccess();
       onClose();
@@ -118,10 +144,12 @@ export function BookingModal({
 
         <div className="flex items-center space-x-3 mb-6">
           <div className="w-12 h-12 rounded-2xl bg-indigo-100 text-indigo-600 flex items-center justify-center shadow-inner shrink-0">
-            <Sparkles className="w-6 h-6" />
+            {bookingToEdit ? <Edit3 className="w-6 h-6" /> : <Sparkles className="w-6 h-6" />}
           </div>
           <div>
-            <h2 className="text-xl font-extrabold text-gray-900">Nova Reserva de Recurso</h2>
+            <h2 className="text-xl font-extrabold text-gray-900">
+              {bookingToEdit ? 'Editar Reserva de Recurso' : 'Nova Reserva de Recurso'}
+            </h2>
             <p className="text-xs text-gray-500">
               Centro Educacional Pedro Rizzi
             </p>
@@ -238,36 +266,38 @@ export function BookingModal({
             />
           </div>
 
-          {/* Recurrence Options */}
-          <div className="pt-2 border-t border-gray-100">
-            <label className="flex items-center gap-2 cursor-pointer">
-              <input
-                type="checkbox"
-                checked={isRecurring}
-                onChange={(e) => setIsRecurring(e.target.checked)}
-                className="w-4 h-4 text-indigo-600 rounded border-gray-300 focus:ring-indigo-500"
-              />
-              <span className="text-xs font-bold text-gray-800 flex items-center gap-1">
-                <Repeat className="w-3.5 h-3.5 text-indigo-600" />
-                Criar Reserva Recorrente (Semanalmente)
-              </span>
-            </label>
-
-            {isRecurring && (
-              <div className="mt-3 p-3 bg-indigo-50/60 rounded-xl border border-indigo-100 animate-in fade-in">
-                <label className="block text-[11px] font-bold text-indigo-900 mb-1">
-                  Repetir toda semana até a data:
-                </label>
+          {/* Recurrence Options (only for new bookings) */}
+          {!bookingToEdit && (
+            <div className="pt-2 border-t border-gray-100">
+              <label className="flex items-center gap-2 cursor-pointer">
                 <input
-                  type="date"
-                  value={recurrenceUntilDate}
-                  min={date}
-                  onChange={(e) => setRecurrenceUntilDate(e.target.value)}
-                  className="w-full bg-white border border-indigo-200 rounded-lg px-3 py-2 text-xs font-bold text-indigo-950 outline-none"
+                  type="checkbox"
+                  checked={isRecurring}
+                  onChange={(e) => setIsRecurring(e.target.checked)}
+                  className="w-4 h-4 text-indigo-600 rounded border-gray-300 focus:ring-indigo-500"
                 />
-              </div>
-            )}
-          </div>
+                <span className="text-xs font-bold text-gray-800 flex items-center gap-1">
+                  <Repeat className="w-3.5 h-3.5 text-indigo-600" />
+                  Criar Reserva Recorrente (Semanalmente)
+                </span>
+              </label>
+
+              {isRecurring && (
+                <div className="mt-3 p-3 bg-indigo-50/60 rounded-xl border border-indigo-100 animate-in fade-in">
+                  <label className="block text-[11px] font-bold text-indigo-900 mb-1">
+                    Repetir toda semana até a data:
+                  </label>
+                  <input
+                    type="date"
+                    value={recurrenceUntilDate}
+                    min={date}
+                    onChange={(e) => setRecurrenceUntilDate(e.target.value)}
+                    className="w-full bg-white border border-indigo-200 rounded-lg px-3 py-2 text-xs font-bold text-indigo-950 outline-none"
+                  />
+                </div>
+              )}
+            </div>
+          )}
 
           {/* Submit Action */}
           <div className="pt-4 flex items-center justify-end gap-3">
@@ -284,11 +314,11 @@ export function BookingModal({
               className="px-6 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-bold shadow-lg shadow-indigo-200 transition-all flex items-center gap-2 disabled:opacity-50"
             >
               {loading ? (
-                <span>Confirmando...</span>
+                <span>Salvando...</span>
               ) : (
                 <>
                   <Check className="w-4 h-4" />
-                  <span>Confirmar Reserva</span>
+                  <span>{bookingToEdit ? 'Salvar Alterações' : 'Confirmar Reserva'}</span>
                 </>
               )}
             </button>

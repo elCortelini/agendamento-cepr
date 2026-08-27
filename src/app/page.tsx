@@ -30,6 +30,7 @@ export default function HomePage() {
 
   // Modal controls
   const [isBookingOpen, setIsBookingOpen] = useState(false);
+  const [bookingToEdit, setBookingToEdit] = useState<Booking | null>(null);
   const [isBlockOpen, setIsBlockOpen] = useState(false);
   const [selectedSlot, setSelectedSlot] = useState<{ resourceId?: string; periodId?: string; date?: string }>({});
 
@@ -77,12 +78,19 @@ export default function HomePage() {
   };
 
   const handleSelectSlotWeek = (dateStr: string, periodId: string) => {
+    setBookingToEdit(null);
     setSelectedSlot({ date: dateStr, periodId, resourceId: resources[0]?.id });
     setIsBookingOpen(true);
   };
 
   const handleSelectSlotDaily = (resourceId: string, periodId: string) => {
+    setBookingToEdit(null);
     setSelectedSlot({ date: selectedDateStr, periodId, resourceId });
+    setIsBookingOpen(true);
+  };
+
+  const handleEditBooking = (booking: Booking) => {
+    setBookingToEdit(booking);
     setIsBookingOpen(true);
   };
 
@@ -164,6 +172,7 @@ export default function HomePage() {
 
           <button
             onClick={() => {
+              setBookingToEdit(null);
               setSelectedSlot({ date: selectedDateStr });
               setIsBookingOpen(true);
             }}
@@ -198,6 +207,7 @@ export default function HomePage() {
           blocks={blocks}
           resources={resources}
           onSelectSlot={handleSelectSlotWeek}
+          onEditBooking={handleEditBooking}
           onRefresh={fetchData}
         />
       ) : (
@@ -215,12 +225,16 @@ export default function HomePage() {
       {/* Modals */}
       <BookingModal
         isOpen={isBookingOpen}
-        onClose={() => setIsBookingOpen(false)}
+        onClose={() => {
+          setIsBookingOpen(false);
+          setBookingToEdit(null);
+        }}
         onSuccess={fetchData}
         resources={resources}
         initialResourceId={selectedSlot.resourceId}
         initialPeriodId={selectedSlot.periodId}
         initialDate={selectedSlot.date || selectedDateStr}
+        bookingToEdit={bookingToEdit}
       />
 
       <BlockModal

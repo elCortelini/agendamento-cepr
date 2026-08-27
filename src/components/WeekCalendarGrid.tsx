@@ -4,7 +4,7 @@ import React from 'react';
 import { Resource, Booking, Block, DEFAULT_PERIODS } from '@/lib/types';
 import { DataService } from '@/lib/dataService';
 import { useAuth } from './GoogleAuthProvider';
-import { Lock, Plus, Monitor, Trash2 } from 'lucide-react';
+import { Lock, Plus, Monitor, Trash2, Edit3 } from 'lucide-react';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 
@@ -14,6 +14,7 @@ interface WeekCalendarGridProps {
   blocks: Block[];
   resources: Resource[];
   onSelectSlot: (dateStr: string, periodId: string) => void;
+  onEditBooking?: (booking: Booking) => void;
   onRefresh: () => void;
 }
 
@@ -23,6 +24,7 @@ export function WeekCalendarGrid({
   blocks,
   resources,
   onSelectSlot,
+  onEditBooking,
   onRefresh,
 }: WeekCalendarGridProps) {
   const { user } = useAuth();
@@ -95,7 +97,7 @@ export function WeekCalendarGrid({
             {slotBookings.map((b) => {
               const isAdmin = user?.role === 'admin';
               const isMine = user?.email && b.professorEmail.toLowerCase() === user.email.toLowerCase();
-              const canDelete = isAdmin || isMine;
+              const canModify = isAdmin || isMine;
 
               return (
                 <div
@@ -116,14 +118,24 @@ export function WeekCalendarGrid({
                     </div>
                   </div>
 
-                  <div className="flex items-center space-x-2 shrink-0 ml-2">
+                  <div className="flex items-center space-x-1.5 shrink-0 ml-2">
                     {b.turma && (
                       <span className="font-black text-sm text-indigo-800 bg-indigo-100 px-2.5 py-0.5 rounded-lg border border-indigo-300/80 shadow-sm tracking-wide">
                         {b.turma}
                       </span>
                     )}
 
-                    {canDelete ? (
+                    {canModify && onEditBooking && (
+                      <button
+                        onClick={() => onEditBooking(b)}
+                        className="text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 p-1 rounded-md transition-colors shrink-0"
+                        title={isAdmin ? 'Editar reserva (Admin)' : 'Editar minha reserva'}
+                      >
+                        <Edit3 className="w-3.5 h-3.5" />
+                      </button>
+                    )}
+
+                    {canModify ? (
                       <button
                         onClick={() => handleDeleteBooking(b.id, b.professorName)}
                         className="text-slate-300 hover:text-rose-600 hover:bg-rose-50 p-1 rounded-md transition-colors shrink-0"
@@ -132,7 +144,7 @@ export function WeekCalendarGrid({
                         <Trash2 className="w-3.5 h-3.5" />
                       </button>
                     ) : (
-                      <span title="Reservado por outro professor (Apenas o próprio professor ou admin pode cancelar)">
+                      <span title="Reservado por outro professor">
                         <Lock className="w-3.5 h-3.5 text-slate-300 shrink-0" />
                       </span>
                     )}
