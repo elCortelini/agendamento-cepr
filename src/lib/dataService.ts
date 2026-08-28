@@ -1,4 +1,4 @@
-import { Resource, Booking, Block, DEFAULT_PERIODS } from './types';
+import { Resource, Booking, Block } from './types';
 
 const INITIAL_RESOURCES: Resource[] = [
   {
@@ -51,29 +51,23 @@ const INITIAL_RESOURCES: Resource[] = [
   },
 ];
 
-function getInitialBookings(): Booking[] {
-  return [];
-}
-
-function getInitialBlocks(): Block[] {
-  return [];
-}
-
-// LocalStorage Keys
-const KEYS = {
-  RESOURCES: 'cepr_resources_v4',
-  BOOKINGS: 'cepr_bookings_v4',
-  BLOCKS: 'cepr_blocks_v4',
-};
-
-// Client-side helper functions
+// Client-side helper functions with automatic migration & recovery
 export const DataService = {
   getResources(): Resource[] {
     if (typeof window === 'undefined') return INITIAL_RESOURCES;
     try {
-      const saved = localStorage.getItem(KEYS.RESOURCES);
-      if (saved) return JSON.parse(saved);
-      localStorage.setItem(KEYS.RESOURCES, JSON.stringify(INITIAL_RESOURCES));
+      const keysToSearch = ['cepr_resources_v4', 'cepr_resources_v3', 'cepr_resources_v2', 'cepr_resources'];
+      for (const k of keysToSearch) {
+        const saved = localStorage.getItem(k);
+        if (saved) {
+          const parsed = JSON.parse(saved);
+          if (Array.isArray(parsed) && parsed.length > 0) {
+            localStorage.setItem('cepr_resources_v4', JSON.stringify(parsed));
+            return parsed;
+          }
+        }
+      }
+      localStorage.setItem('cepr_resources_v4', JSON.stringify(INITIAL_RESOURCES));
     } catch (e) {}
     return INITIAL_RESOURCES;
   },
@@ -97,7 +91,7 @@ export const DataService = {
     }
 
     try {
-      localStorage.setItem(KEYS.RESOURCES, JSON.stringify(resources));
+      localStorage.setItem('cepr_resources_v4', JSON.stringify(resources));
     } catch (e) {}
     return newRes;
   },
@@ -105,24 +99,30 @@ export const DataService = {
   deleteResource(id: string): void {
     const resources = this.getResources().filter((r) => r.id !== id);
     try {
-      localStorage.setItem(KEYS.RESOURCES, JSON.stringify(resources));
+      localStorage.setItem('cepr_resources_v4', JSON.stringify(resources));
     } catch (e) {}
   },
 
   getBookings(date?: string, email?: string): Booking[] {
-    if (typeof window === 'undefined') return getInitialBookings();
+    if (typeof window === 'undefined') return [];
     let bookings: Booking[] = [];
     try {
-      const saved = localStorage.getItem(KEYS.BOOKINGS);
-      if (saved) {
-        bookings = JSON.parse(saved);
-      } else {
-        bookings = getInitialBookings();
-        localStorage.setItem(KEYS.BOOKINGS, JSON.stringify(bookings));
+      const keysToSearch = ['cepr_bookings_v4', 'cepr_bookings_v3', 'cepr_bookings_v2', 'cepr_bookings'];
+      for (const k of keysToSearch) {
+        const saved = localStorage.getItem(k);
+        if (saved) {
+          const parsed = JSON.parse(saved);
+          if (Array.isArray(parsed) && parsed.length > 0) {
+            for (const item of parsed) {
+              if (!bookings.some((b) => b.id === item.id)) {
+                bookings.push(item);
+              }
+            }
+          }
+        }
       }
-    } catch (e) {
-      bookings = getInitialBookings();
-    }
+      localStorage.setItem('cepr_bookings_v4', JSON.stringify(bookings));
+    } catch (e) {}
 
     if (date) {
       bookings = bookings.filter((b) => b.date === date);
@@ -144,7 +144,7 @@ export const DataService = {
 
     bookings.push(newBooking);
     try {
-      localStorage.setItem(KEYS.BOOKINGS, JSON.stringify(bookings));
+      localStorage.setItem('cepr_bookings_v4', JSON.stringify(bookings));
     } catch (e) {}
     return newBooking;
   },
@@ -152,24 +152,30 @@ export const DataService = {
   deleteBooking(id: string): void {
     const bookings = this.getBookings().filter((b) => b.id !== id);
     try {
-      localStorage.setItem(KEYS.BOOKINGS, JSON.stringify(bookings));
+      localStorage.setItem('cepr_bookings_v4', JSON.stringify(bookings));
     } catch (e) {}
   },
 
   getBlocks(date?: string): Block[] {
-    if (typeof window === 'undefined') return getInitialBlocks();
+    if (typeof window === 'undefined') return [];
     let blocks: Block[] = [];
     try {
-      const saved = localStorage.getItem(KEYS.BLOCKS);
-      if (saved) {
-        blocks = JSON.parse(saved);
-      } else {
-        blocks = getInitialBlocks();
-        localStorage.setItem(KEYS.BLOCKS, JSON.stringify(blocks));
+      const keysToSearch = ['cepr_blocks_v4', 'cepr_blocks_v3', 'cepr_blocks_v2', 'cepr_blocks'];
+      for (const k of keysToSearch) {
+        const saved = localStorage.getItem(k);
+        if (saved) {
+          const parsed = JSON.parse(saved);
+          if (Array.isArray(parsed) && parsed.length > 0) {
+            for (const item of parsed) {
+              if (!blocks.some((b) => b.id === item.id)) {
+                blocks.push(item);
+              }
+            }
+          }
+        }
       }
-    } catch (e) {
-      blocks = getInitialBlocks();
-    }
+      localStorage.setItem('cepr_blocks_v4', JSON.stringify(blocks));
+    } catch (e) {}
 
     if (date) {
       blocks = blocks.filter((b) => b.date === date);
@@ -187,7 +193,7 @@ export const DataService = {
 
     blocks.push(newBlock);
     try {
-      localStorage.setItem(KEYS.BLOCKS, JSON.stringify(blocks));
+      localStorage.setItem('cepr_blocks_v4', JSON.stringify(blocks));
     } catch (e) {}
     return newBlock;
   },
@@ -195,7 +201,7 @@ export const DataService = {
   deleteBlock(id: string): void {
     const blocks = this.getBlocks().filter((b) => b.id !== id);
     try {
-      localStorage.setItem(KEYS.BLOCKS, JSON.stringify(blocks));
+      localStorage.setItem('cepr_blocks_v4', JSON.stringify(blocks));
     } catch (e) {}
   },
 };
