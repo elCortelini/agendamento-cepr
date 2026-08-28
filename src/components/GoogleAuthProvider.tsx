@@ -2,10 +2,11 @@
 
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { User, UserRole } from '@/lib/types';
-import { GoogleOAuthProvider } from '@react-oauth/google';
+import { auth, googleProvider, signInWithPopup, signOut, onAuthStateChanged } from '@/lib/firebase';
 
 interface AuthContextType {
   user: User | null;
+  loginGoogle: () => Promise<void>;
   login: (userData: Partial<User>) => Promise<void>;
   logout: () => void;
   switchRole: (role: UserRole) => void;
@@ -13,62 +14,71 @@ interface AuthContextType {
 
 const AuthContext = createContext<AuthContextType>({
   user: null,
+  loginGoogle: async () => {},
   login: async () => {},
   logout: () => {},
   switchRole: () => {},
 });
 
-const DEFAULT_GOOGLE_CLIENT_ID = process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID || '1234567890-example.apps.googleusercontent.com';
-
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
 
   useEffect(() => {
+    // Carregar do cache local primeiro
     const saved = localStorage.getItem('cepr_user');
     if (saved) {
       try {
-        const u = JSON.parse(saved);
-        // Correct name if old typo existed
-        if (u.name === 'Elevi Cortolini') {
-          u.name = 'Elevi Cortelini';
-          u.email = 'elevi.cortelini@pedrorizzi.edu.br';
-          localStorage.setItem('cepr_user', JSON.stringify(u));
-        }
-        setUser(u);
-      } catch (e) {
-        localStorage.removeItem('cepr_user');
-      }
-    } else {
-      const defaultUser: User = {
-        id: 'usr-google-prof',
-        name: 'Elevi Cortelini',
-        email: 'elevi.cortelini@pedrorizzi.edu.br',
-        avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150',
-        role: 'professor',
-      };
-      setUser(defaultUser);
-      localStorage.setItem('cepr_user', JSON.stringify(defaultUser));
+        setUser(JSON.parse(saved));
+      } catch (e) {}
     }
+
+    const unsubscribe = onAuthStateChanged(auth, (firebaseUser) => {
+      if (firebaseUser) {
+        const email = firebaseUser.email || 'usuario@pedrorizzi.edu.br';
+        const name = firebaseUser.displayName || 'Usuário Google';
+        const avatar = firebaseUser.photoURL || `https://api.dicebear.com/7.x/avataaars/svg?seed=${email}`;
+
+        // Se for Elevi ou primeiro login -> admin
+        const isAdmin = email.includes('elcortelini') || email.includes('admin');
+        const newUser: User = {
+          id: firebaseUser.uid,
+          name,
+          email,
+          avatar,
+          role: isAdmin ? 'admin' : 'professor',
+        };
+
+        setUser(newUser);
+        localStorage.setItem('cepr_user', JSON.stringify(newUser));
+      }
+    });
+
+    return () => unsubscribe();
   }, []);
 
-  const login = async (userData: Partial<User>) => {
+  const loginGoogle = async () => {
     try {
-      const res = await fetch('/api/auth', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(userData),
-      });
-      const data = await res.json();
-      if (data.user) {
-        setUser(data.user);
-        localStorage.setItem('cepr_user', JSON.stringify(data.user));
-      }
+      await signInWithPopup(auth, googleProvider);
     } catch (e) {
-      console.error('Login error:', e);
+      console.error('Erro ao fazer login com Google:', e);
+      alert('Não foi possível realizar a autenticação com o Google.');
     }
   };
 
+  const login = async (userData: Partial<User>) => {
+    const newUser: User = {
+      id: userData.id || `usr-${Date.now()}`,
+      name: userData.name || 'Usuário',
+      email: userData.email || 'usuario@pedrorizzi.edu.br',
+      avatar: userData.avatar || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150',
+      role: (userData.role as UserRole) || 'professor',
+    };
+    setUser(newUser);
+    localStorage.setItem('cepr_user', JSON.stringify(newUser));
+  };
+
   const logout = () => {
+    signOut(auth).catch(() => {});
     setUser(null);
     localStorage.removeItem('cepr_user');
   };
@@ -81,11 +91,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   };
 
   return (
-    <GoogleOAuthProvider clientId={DEFAULT_GOOGLE_CLIENT_ID}>
-      <AuthContext.Provider value={{ user, login, logout, switchRole }}>
-        {children}
-      </AuthContext.Provider>
-    </GoogleOAuthProvider>
+    <AuthContext.Provider value={{ user, loginGoogle, login, logout, switchRole }}>
+      {children}
+    </AuthContext.Provider>
   );
 }
 
