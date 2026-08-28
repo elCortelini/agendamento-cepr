@@ -1,5 +1,7 @@
 import { Resource, Booking, Block } from './types';
 
+const FIREBASE_BASE_URL = 'https://agendamento-cepr-default-rtdb.firebaseio.com';
+
 const INITIAL_RESOURCES: Resource[] = [
   {
     id: 'res-lab-inf',
@@ -51,23 +53,51 @@ const INITIAL_RESOURCES: Resource[] = [
   },
 ];
 
-// Client-side helper functions with automatic migration & recovery
+// Helper to safely parse object/array from Firebase
+function parseFirebaseData<T>(data: any): T[] {
+  if (!data) return [];
+  if (Array.isArray(data)) return data.filter(Boolean);
+  if (typeof data === 'object') {
+    return Object.values(data).filter(Boolean) as T[];
+  }
+  return [];
+}
+
 export const DataService = {
+  // Sync Cloud Data with Local Storage on load
+  async syncCloudData(): Promise<void> {
+    if (typeof window === 'undefined') return;
+    try {
+      // Fetch Bookings from Firebase
+      const resBookings = await fetch(`${FIREBASE_BASE_URL}/bookings.json`);
+      if (resBookings.ok) {
+        const rawBookings = await resBookings.json();
+        const cloudBookings = parseFirebaseData<Booking>(rawBookings);
+        if (cloudBookings.length > 0) {
+          localStorage.setItem('cepr_bookings_v5', JSON.stringify(cloudBookings));
+        }
+      }
+
+      // Fetch Blocks from Firebase
+      const resBlocks = await fetch(`${FIREBASE_BASE_URL}/blocks.json`);
+      if (resBlocks.ok) {
+        const rawBlocks = await resBlocks.json();
+        const cloudBlocks = parseFirebaseData<Block>(rawBlocks);
+        if (cloudBlocks.length > 0) {
+          localStorage.setItem('cepr_blocks_v5', JSON.stringify(cloudBlocks));
+        }
+      }
+    } catch (e) {
+      console.warn('Using local cache fallback:', e);
+    }
+  },
+
   getResources(): Resource[] {
     if (typeof window === 'undefined') return INITIAL_RESOURCES;
     try {
-      const keysToSearch = ['cepr_resources_v4', 'cepr_resources_v3', 'cepr_resources_v2', 'cepr_resources'];
-      for (const k of keysToSearch) {
-        const saved = localStorage.getItem(k);
-        if (saved) {
-          const parsed = JSON.parse(saved);
-          if (Array.isArray(parsed) && parsed.length > 0) {
-            localStorage.setItem('cepr_resources_v4', JSON.stringify(parsed));
-            return parsed;
-          }
-        }
-      }
-      localStorage.setItem('cepr_resources_v4', JSON.stringify(INITIAL_RESOURCES));
+      const saved = localStorage.getItem('cepr_resources_v5');
+      if (saved) return JSON.parse(saved);
+      localStorage.setItem('cepr_resources_v5', JSON.stringify(INITIAL_RESOURCES));
     } catch (e) {}
     return INITIAL_RESOURCES;
   },
@@ -91,7 +121,12 @@ export const DataService = {
     }
 
     try {
-      localStorage.setItem('cepr_resources_v4', JSON.stringify(resources));
+      localStorage.setItem('cepr_resources_v5', JSON.stringify(resources));
+      fetch(`${FIREBASE_BASE_URL}/resources/${newRes.id}.json`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(newRes),
+      }).catch(() => {});
     } catch (e) {}
     return newRes;
   },
@@ -99,7 +134,8 @@ export const DataService = {
   deleteResource(id: string): void {
     const resources = this.getResources().filter((r) => r.id !== id);
     try {
-      localStorage.setItem('cepr_resources_v4', JSON.stringify(resources));
+      localStorage.setItem('cepr_resources_v5', JSON.stringify(resources));
+      fetch(`${FIREBASE_BASE_URL}/resources/${id}.json`, { method: 'DELETE' }).catch(() => {});
     } catch (e) {}
   },
 
@@ -107,7 +143,7 @@ export const DataService = {
     if (typeof window === 'undefined') return [];
     let bookings: Booking[] = [];
     try {
-      const keysToSearch = ['cepr_bookings_v4', 'cepr_bookings_v3', 'cepr_bookings_v2', 'cepr_bookings'];
+      const keysToSearch = ['cepr_bookings_v5', 'cepr_bookings_v4', 'cepr_bookings_v3', 'cepr_bookings_v2'];
       for (const k of keysToSearch) {
         const saved = localStorage.getItem(k);
         if (saved) {
@@ -121,7 +157,6 @@ export const DataService = {
           }
         }
       }
-      localStorage.setItem('cepr_bookings_v4', JSON.stringify(bookings));
     } catch (e) {}
 
     if (date) {
@@ -142,9 +177,22 @@ export const DataService = {
       createdAt: new Date().toISOString(),
     };
 
-    bookings.push(newBooking);
+    // If editing existing
+    const existingIdx = bookings.findIndex((b) => b.id === newBooking.id);
+    if (existingIdx !== -1) {
+      bookings[existingIdx] = newBooking;
+    } else {
+      bookings.push(newBooking);
+    }
+
     try {
-      localStorage.setItem('cepr_bookings_v4', JSON.stringify(bookings));
+      localStorage.setItem('cepr_bookings_v5', JSON.stringify(bookings));
+      // Save to Firebase Cloud DB
+      fetch(`${FIREBASE_BASE_URL}/bookings/${newBooking.id}.json`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(newBooking),
+      }).catch(() => {});
     } catch (e) {}
     return newBooking;
   },
@@ -152,7 +200,9 @@ export const DataService = {
   deleteBooking(id: string): void {
     const bookings = this.getBookings().filter((b) => b.id !== id);
     try {
-      localStorage.setItem('cepr_bookings_v4', JSON.stringify(bookings));
+      localStorage.setItem('cepr_bookings_v5', JSON.stringify(bookings));
+      // Delete from Firebase Cloud DB
+      fetch(`${FIREBASE_BASE_URL}/bookings/${id}.json`, { method: 'DELETE' }).catch(() => {});
     } catch (e) {}
   },
 
@@ -160,7 +210,7 @@ export const DataService = {
     if (typeof window === 'undefined') return [];
     let blocks: Block[] = [];
     try {
-      const keysToSearch = ['cepr_blocks_v4', 'cepr_blocks_v3', 'cepr_blocks_v2', 'cepr_blocks'];
+      const keysToSearch = ['cepr_blocks_v5', 'cepr_blocks_v4', 'cepr_blocks_v3', 'cepr_blocks_v2'];
       for (const k of keysToSearch) {
         const saved = localStorage.getItem(k);
         if (saved) {
@@ -174,7 +224,6 @@ export const DataService = {
           }
         }
       }
-      localStorage.setItem('cepr_blocks_v4', JSON.stringify(blocks));
     } catch (e) {}
 
     if (date) {
@@ -193,7 +242,13 @@ export const DataService = {
 
     blocks.push(newBlock);
     try {
-      localStorage.setItem('cepr_blocks_v4', JSON.stringify(blocks));
+      localStorage.setItem('cepr_blocks_v5', JSON.stringify(blocks));
+      // Save to Firebase Cloud DB
+      fetch(`${FIREBASE_BASE_URL}/blocks/${newBlock.id}.json`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(newBlock),
+      }).catch(() => {});
     } catch (e) {}
     return newBlock;
   },
@@ -201,7 +256,9 @@ export const DataService = {
   deleteBlock(id: string): void {
     const blocks = this.getBlocks().filter((b) => b.id !== id);
     try {
-      localStorage.setItem('cepr_blocks_v4', JSON.stringify(blocks));
+      localStorage.setItem('cepr_blocks_v5', JSON.stringify(blocks));
+      // Delete from Firebase Cloud DB
+      fetch(`${FIREBASE_BASE_URL}/blocks/${id}.json`, { method: 'DELETE' }).catch(() => {});
     } catch (e) {}
   },
 };

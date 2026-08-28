@@ -40,21 +40,25 @@ export default function HomePage() {
   const weekRangeText = `${format(weekDays[0], 'dd/MM')} - ${format(weekDays[4], 'dd/MM')}`;
   const selectedDateStr = format(currentDate, 'yyyy-MM-dd');
 
-  const fetchData = () => {
-    setLoading(true);
+  const fetchData = async () => {
     try {
-      setResources(DataService.getResources());
-      setBookings(DataService.getBookings());
-      setBlocks(DataService.getBlocks());
-    } catch (e) {
-      console.error('Error fetching dashboard data:', e);
-    } finally {
-      setLoading(false);
-    }
+      await DataService.syncCloudData();
+    } catch (e) {}
+    setResources(DataService.getResources());
+    setBookings(DataService.getBookings());
+    setBlocks(DataService.getBlocks());
+    setLoading(false);
   };
 
   useEffect(() => {
     fetchData();
+    const interval = setInterval(() => {
+      DataService.syncCloudData().then(() => {
+        setBookings(DataService.getBookings());
+        setBlocks(DataService.getBlocks());
+      });
+    }, 8000);
+    return () => clearInterval(interval);
   }, [currentDate]);
 
   const handlePrev = () => {
@@ -190,7 +194,7 @@ export default function HomePage() {
       {loading ? (
         <div className="bg-white rounded-3xl p-12 text-center border border-slate-200 shadow-sm">
           <div className="w-10 h-10 border-4 border-indigo-600 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
-          <p className="text-xs font-bold text-slate-600">Carregando horários da agenda CEPR...</p>
+          <p className="text-xs font-bold text-slate-600">Sincronizando agenda com a nuvem CEPR...</p>
         </div>
       ) : viewMode === 'weekly' ? (
         <WeekCalendarGrid
