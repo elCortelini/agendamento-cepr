@@ -6,7 +6,31 @@ const INITIAL_RESOURCES: Resource[] = [
     name: 'Laboratório de Informática',
     type: 'room',
     totalQuantity: 1,
-    description: 'Laboratório principal com 30 computadores.',
+    description: 'Laboratório principal equipado com 30 computadores.',
+    active: true,
+  },
+  {
+    id: 'res-lousa-1',
+    name: 'TV Lousa Digital 1 (1º Andar)',
+    type: 'equipment',
+    totalQuantity: 1,
+    description: 'Lousa digital interativa 1.',
+    active: true,
+  },
+  {
+    id: 'res-lousa-2',
+    name: 'TV Lousa Digital 2 (2º Andar)',
+    type: 'equipment',
+    totalQuantity: 1,
+    description: 'Lousa digital interativa 2.',
+    active: true,
+  },
+  {
+    id: 'res-biblioteca',
+    name: 'Espaço da Biblioteca',
+    type: 'room',
+    totalQuantity: 1,
+    description: 'Espaço da biblioteca para leitura e atividades.',
     active: true,
   },
   {
@@ -25,108 +49,21 @@ const INITIAL_RESOURCES: Resource[] = [
     description: 'Sala climatizada com data show.',
     active: true,
   },
-  {
-    id: 'res-projetor-movel',
-    name: 'Projetor Móvel',
-    type: 'equipment',
-    totalQuantity: 3,
-    description: 'Kit móvel contendo Projetor + Caixa de som.',
-    active: true,
-  },
 ];
 
 function getInitialBookings(): Booking[] {
-  const today = new Date().toISOString().split('T')[0];
-  return [
-    {
-      id: 'book-1',
-      resourceId: 'res-lab-inf',
-      resourceName: 'Laboratório de Informática',
-      date: today,
-      periodId: 'mat-4',
-      periodName: '4º Período (10:34 - 11:30)',
-      quantity: 1,
-      professorName: 'SORAYA LUIZA DE BARROS',
-      professorEmail: 'soraya.barros@pedrorizzi.edu.br',
-      turma: '5º Ano A',
-      justification: 'Atividade pedagógica de Informática.',
-      status: 'active',
-      createdAt: new Date().toISOString(),
-    },
-    {
-      id: 'book-2',
-      resourceId: 'res-carrinho-tablets-a',
-      resourceName: 'Carrinho de Chromebooks',
-      date: today,
-      periodId: 'mat-2',
-      periodName: '2º Período (08:26 - 09:22)',
-      quantity: 15,
-      professorName: 'ANDRÉ LUIZ DALSOCHIO GOMES',
-      professorEmail: 'andre.gomes@pedrorizzi.edu.br',
-      turma: '8º Ano B',
-      justification: 'Pesquisa escolar no Khan Academy.',
-      status: 'active',
-      createdAt: new Date().toISOString(),
-    },
-    {
-      id: 'book-3',
-      resourceId: 'res-sala-video',
-      resourceName: 'Sala de Vídeo / Multimídia',
-      date: today,
-      periodId: 'mat-4',
-      periodName: '4º Período (10:34 - 11:30)',
-      quantity: 1,
-      professorName: 'PROERD - 501',
-      professorEmail: 'proerd@pedrorizzi.edu.br',
-      turma: '501',
-      justification: 'Apresentação do Programa PROERD.',
-      status: 'active',
-      createdAt: new Date().toISOString(),
-    },
-  ];
+  return [];
 }
 
 function getInitialBlocks(): Block[] {
-  const today = new Date().toISOString().split('T')[0];
-  return [
-    {
-      id: 'blk-1',
-      resourceId: 'all',
-      resourceName: 'Todos os Recursos',
-      date: today,
-      periodId: 'mat-1',
-      reason: 'Pré-Conselho',
-      createdBy: 'admin@pedrorizzi.edu.br',
-      createdAt: new Date().toISOString(),
-    },
-    {
-      id: 'blk-2',
-      resourceId: 'all',
-      resourceName: 'Todos os Recursos',
-      date: today,
-      periodId: 'mat-2',
-      reason: 'Pré-Conselho',
-      createdBy: 'admin@pedrorizzi.edu.br',
-      createdAt: new Date().toISOString(),
-    },
-    {
-      id: 'blk-3',
-      resourceId: 'all',
-      resourceName: 'Todos os Recursos',
-      date: today,
-      periodId: 'mat-3',
-      reason: 'Pré-Conselho',
-      createdBy: 'admin@pedrorizzi.edu.br',
-      createdAt: new Date().toISOString(),
-    },
-  ];
+  return [];
 }
 
 // LocalStorage Keys
 const KEYS = {
-  RESOURCES: 'cepr_resources_v2',
-  BOOKINGS: 'cepr_bookings_v2',
-  BLOCKS: 'cepr_blocks_v2',
+  RESOURCES: 'cepr_resources_v4',
+  BOOKINGS: 'cepr_bookings_v4',
+  BLOCKS: 'cepr_blocks_v4',
 };
 
 // Client-side helper functions
