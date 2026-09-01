@@ -26,23 +26,18 @@ export function BlockModal({ isOpen, onClose, onSuccess, resources, initialDate 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
-
-    if (!reason.trim()) {
-      setError('Por favor, informe a justificativa do bloqueio.');
-      return;
-    }
-
     setLoading(true);
 
     try {
       const res = resourceId === 'all' ? null : resources.find((r) => r.id === resourceId);
+      const finalReason = reason.trim() || 'Bloqueado';
 
       DataService.saveBlock({
         resourceId,
         resourceName: res ? res.name : 'Todos os Recursos',
         date,
         periodId,
-        reason,
+        reason: finalReason,
         createdBy: 'admin@pedrorizzi.edu.br',
       });
 
@@ -123,25 +118,29 @@ export function BlockModal({ isOpen, onClose, onSuccess, resources, initialDate 
                 onChange={(e) => setPeriodId(e.target.value)}
                 className="w-full bg-slate-50 border border-gray-200 rounded-xl px-3 py-2.5 text-sm font-semibold text-gray-900 focus:ring-2 focus:ring-amber-500 outline-none"
               >
-                <option value="all_day">🔒 Bloquear Dia Inteiro (Todos os Períodos)</option>
-                {DEFAULT_PERIODS.map((p) => (
-                  <option key={p.id} value={p.id}>
-                    {p.name}
-                  </option>
-                ))}
+                <option value="all_day">🔒 Bloquear DIA INTEIRO (Todos os Períodos)</option>
+                <option value="matutino">☀️ Bloquear todo o MATUTINO (Manhã)</option>
+                <option value="vespertino">🌙 Bloquear todo o VESPERTINO (Tarde)</option>
+                <optgroup label="Período Específico">
+                  {DEFAULT_PERIODS.map((p) => (
+                    <option key={p.id} value={p.id}>
+                      {p.name}
+                    </option>
+                  ))}
+                </optgroup>
               </select>
             </div>
           </div>
 
           <div>
             <label className="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-1">
-              Justificativa do Bloqueio *
+              Justificativa do Bloqueio <span className="text-gray-400 font-normal">(Opcional)</span>
             </label>
             <textarea
               rows={3}
               value={reason}
               onChange={(e) => setReason(e.target.value)}
-              placeholder="Ex: Pré-Conselho / Manutenção preventiva."
+              placeholder="Ex: Pré-Conselho / Manutenção preventiva (Opcional)"
               className="w-full bg-slate-50 border border-gray-200 rounded-xl px-3 py-2.5 text-sm text-gray-900 focus:ring-2 focus:ring-amber-500 outline-none resize-none"
             />
           </div>

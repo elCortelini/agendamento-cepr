@@ -2,8 +2,8 @@
 
 import React from 'react';
 import { Resource, Booking, Block, DEFAULT_PERIODS } from '@/lib/types';
+import { Lock, Clock, Plus, Trash2, Monitor, Tablet, Presentation, Sparkles } from 'lucide-react';
 import { useAuth } from './GoogleAuthProvider';
-import { Monitor, Tablet, Video, Tv, Lock, Plus, Clock, Trash2 } from 'lucide-react';
 
 interface CalendarGridProps {
   resources: Resource[];
@@ -11,7 +11,7 @@ interface CalendarGridProps {
   blocks: Block[];
   selectedDate: string;
   onSelectSlot: (resourceId: string, periodId: string) => void;
-  selectedShift: 'all' | 'matutino' | 'vespertino';
+  selectedShift?: 'matutino' | 'vespertino' | 'all';
   onRefresh?: () => void;
 }
 
@@ -21,7 +21,7 @@ export function CalendarGrid({
   blocks,
   selectedDate,
   onSelectSlot,
-  selectedShift,
+  selectedShift = 'all',
   onRefresh,
 }: CalendarGridProps) {
   const { user } = useAuth();
@@ -33,20 +33,19 @@ export function CalendarGrid({
 
   const getResourceIcon = (type: string) => {
     switch (type) {
-      case 'tablet':
-        return <Tablet className="w-5 h-5 text-emerald-600" />;
       case 'room':
-        return <Monitor className="w-5 h-5 text-indigo-600" />;
+        return <Presentation className="w-5 h-5 text-indigo-600" />;
       case 'equipment':
-        return <Tv className="w-5 h-5 text-purple-600" />;
+        return <Monitor className="w-5 h-5 text-emerald-600" />;
+      case 'tablet':
+        return <Tablet className="w-5 h-5 text-amber-600" />;
       default:
-        return <Video className="w-5 h-5 text-blue-600" />;
+        return <Sparkles className="w-5 h-5 text-indigo-600" />;
     }
   };
 
-  const handleDeleteBooking = async (bookingId: string, professorName: string) => {
-    const isSelf = user?.role === 'admin' ? 'como Administrador' : 'sua própria reserva';
-    if (!confirm(`Confirmar exclusão da reserva de ${professorName} (${isSelf})?`)) return;
+  const handleDeleteBooking = async (bookingId: string) => {
+    if (!confirm('Tem certeza que deseja cancelar esta reserva?')) return;
 
     try {
       const res = await fetch(
@@ -103,17 +102,30 @@ export function CalendarGrid({
                 </td>
 
                 {resources.map((res) => {
+                  const isMatutino = period.shift === 'matutino';
+                  const isVespertino = period.shift === 'vespertino';
+
                   const isBlocked = blocks.some(
                     (b) =>
                       b.date === selectedDate &&
                       (b.resourceId === 'all' || b.resourceId === res.id) &&
-                      (b.periodId === 'all_day' || b.periodId === period.id)
+                      (
+                        b.periodId === 'all_day' ||
+                        b.periodId === period.id ||
+                        (b.periodId === 'matutino' && isMatutino) ||
+                        (b.periodId === 'vespertino' && isVespertino)
+                      )
                   );
                   const blockInfo = blocks.find(
                     (b) =>
                       b.date === selectedDate &&
                       (b.resourceId === 'all' || b.resourceId === res.id) &&
-                      (b.periodId === 'all_day' || b.periodId === period.id)
+                      (
+                        b.periodId === 'all_day' ||
+                        b.periodId === period.id ||
+                        (b.periodId === 'matutino' && isMatutino) ||
+                        (b.periodId === 'vespertino' && isVespertino)
+                      )
                   );
 
                   const slotBookings = bookings.filter(
@@ -134,39 +146,33 @@ export function CalendarGrid({
                             <span>Bloqueado</span>
                           </div>
                           <p className="text-[11px] text-slate-500 line-clamp-2 italic">
-                            {blockInfo?.reason || 'Pré-Conselho'}
+                            {blockInfo?.reason || 'Bloqueado'}
                           </p>
                           <span className="text-[10px] bg-slate-200 text-slate-700 font-semibold px-2 py-0.5 rounded text-center">
                             Indisponível
                           </span>
                         </div>
                       ) : isFullyBooked ? (
-                        <div className="h-full rounded-xl bg-rose-50 border border-rose-200 p-3 flex flex-col justify-between text-rose-900">
-                          <div>
-                            <div className="flex items-center justify-between mb-1">
-                              <span className="text-[11px] font-bold bg-rose-200 text-rose-800 px-2 py-0.5 rounded-full">
-                                Lotado
-                              </span>
-                              <span className="text-[10px] text-rose-700 font-bold">
-                                {totalReserved}/{res.totalQuantity}
-                              </span>
-                            </div>
+                        <div className="h-full rounded-xl bg-indigo-50/60 border border-indigo-100 p-2.5 flex flex-col justify-between">
+                          <div className="space-y-1.5 overflow-y-auto max-h-[85px] pr-1">
                             {slotBookings.map((b) => {
                               const isAdmin = user?.role === 'admin';
                               const isMine = user?.email && b.professorEmail.toLowerCase() === user.email.toLowerCase();
                               const canDelete = isAdmin || isMine;
 
                               return (
-                                <div key={b.id} className="mt-1 text-xs flex justify-between items-start">
-                                  <div>
-                                    <span className="font-bold text-rose-950 block truncate">{b.professorName}</span>
-                                    <span className="text-[11px] text-rose-700 font-medium">Turma: {b.turma}</span>
+                                <div
+                                  key={b.id}
+                                  className="bg-white rounded-lg p-2 border border-indigo-200/80 shadow-2xs text-xs flex items-center justify-between"
+                                >
+                                  <div className="truncate pr-1">
+                                    <span className="font-bold text-gray-900 block truncate">{b.professorName}</span>
+                                    {b.turma && <span className="text-[10px] text-indigo-700 font-extrabold">{b.turma}</span>}
                                   </div>
                                   {canDelete && (
                                     <button
-                                      onClick={() => handleDeleteBooking(b.id, b.professorName)}
-                                      className="text-rose-400 hover:text-rose-800 p-1 rounded transition-colors"
-                                      title="Excluir reserva"
+                                      onClick={() => handleDeleteBooking(b.id)}
+                                      className="text-gray-400 hover:text-rose-600 p-1 rounded"
                                     >
                                       <Trash2 className="w-3.5 h-3.5" />
                                     </button>
@@ -175,57 +181,33 @@ export function CalendarGrid({
                               );
                             })}
                           </div>
+                          <span className="text-[10px] bg-indigo-600 text-white font-bold px-2 py-0.5 rounded text-center mt-1">
+                            Reservado
+                          </span>
                         </div>
                       ) : (
                         <div className="h-full flex flex-col justify-between">
                           {isPartiallyBooked && (
-                            <div className="mb-2 p-2 rounded-lg bg-amber-50 border border-amber-200 text-amber-900 text-xs">
-                              <div className="flex justify-between items-center mb-1">
-                                <span className="font-bold text-[10px] uppercase bg-amber-200 text-amber-800 px-1.5 py-0.5 rounded">
-                                  Reserva Parcial
-                                </span>
-                                <span className="font-mono text-[11px] font-bold">
-                                  {availableQuantity} livre(s)
-                                </span>
-                              </div>
-                              {slotBookings.map((b) => {
-                                const isAdmin = user?.role === 'admin';
-                                const isMine = user?.email && b.professorEmail.toLowerCase() === user.email.toLowerCase();
-                                const canDelete = isAdmin || isMine;
-
-                                return (
-                                  <div key={b.id} className="text-[11px] flex justify-between items-center truncate">
-                                    <span className="truncate">
-                                      <strong>{b.professorName}</strong> ({b.quantity} un.)
-                                    </span>
-                                    {canDelete && (
-                                      <button
-                                        onClick={() => handleDeleteBooking(b.id, b.professorName)}
-                                        className="text-amber-700 hover:text-rose-600 p-0.5 rounded ml-1"
-                                      >
-                                        <Trash2 className="w-3 h-3" />
-                                      </button>
-                                    )}
-                                  </div>
-                                );
-                              })}
+                            <div className="space-y-1 overflow-y-auto max-h-[60px] mb-1">
+                              {slotBookings.map((b) => (
+                                <div key={b.id} className="bg-amber-50 rounded p-1.5 text-xs text-amber-900 border border-amber-200">
+                                  <span className="font-bold">{b.professorName}</span> ({b.quantity} un.)
+                                </div>
+                              ))}
                             </div>
                           )}
 
                           <button
                             onClick={() => onSelectSlot(res.id, period.id)}
-                            className={`w-full h-full min-h-[64px] rounded-xl border border-dashed flex flex-col items-center justify-center gap-1 transition-all group ${
-                              isPartiallyBooked
-                                ? 'bg-amber-50/50 border-amber-300 hover:bg-amber-100 hover:border-amber-400 text-amber-800'
-                                : 'bg-emerald-50/40 border-emerald-300 hover:bg-emerald-100/80 hover:border-emerald-500 text-emerald-800'
-                            }`}
+                            className="w-full h-full min-h-[60px] border border-dashed border-gray-300 hover:border-indigo-500 hover:bg-indigo-50/50 rounded-xl p-2 flex flex-col items-center justify-center text-gray-400 hover:text-indigo-600 transition-all group"
                           >
-                            <div className="w-7 h-7 rounded-full bg-white shadow-sm flex items-center justify-center group-hover:scale-110 transition-transform">
-                              <Plus className="w-4 h-4 text-emerald-600" />
-                            </div>
-                            <span className="text-xs font-bold">
-                              {isPartiallyBooked ? `Reservar restantes (${availableQuantity})` : 'Agendar Recurso'}
-                            </span>
+                            <Plus className="w-5 h-5 mb-1 group-hover:scale-110 transition-transform" />
+                            <span className="text-xs font-bold">Reservar</span>
+                            {res.totalQuantity > 1 && (
+                              <span className="text-[10px] text-gray-400 font-medium">
+                                ({availableQuantity} de {res.totalQuantity} lív.)
+                              </span>
+                            )}
                           </button>
                         </div>
                       )}

@@ -59,11 +59,19 @@ export function WeekCalendarGrid({
 
   const renderSlotContent = (dayDate: Date, periodId: string) => {
     const dateStr = format(dayDate, 'yyyy-MM-dd');
+    const periodObj = DEFAULT_PERIODS.find((p) => p.id === periodId);
+    const isMatutino = periodObj?.shift === 'matutino';
+    const isVespertino = periodObj?.shift === 'vespertino';
 
     const slotBlock = blocks.find(
       (b) =>
         b.date === dateStr &&
-        (b.periodId === 'all_day' || b.periodId === periodId)
+        (
+          b.periodId === 'all_day' ||
+          b.periodId === periodId ||
+          (b.periodId === 'matutino' && isMatutino) ||
+          (b.periodId === 'vespertino' && isVespertino)
+        )
     );
 
     const slotBookings = bookings.filter(
@@ -78,7 +86,7 @@ export function WeekCalendarGrid({
               <span className="p-0.5 bg-slate-300 rounded shrink-0">
                 <Lock className="w-3 h-3 text-slate-600" />
               </span>
-              <span className="text-[11px] font-bold truncate">{slotBlock.reason || 'Pré-Conselho'}</span>
+              <span className="text-[11px] font-bold truncate">{slotBlock.reason || 'Bloqueado'}</span>
             </div>
             {user?.role === 'admin' ? (
               <button
@@ -237,7 +245,7 @@ export function WeekCalendarGrid({
             ))}
 
             <tr className="bg-indigo-600 text-white font-extrabold text-[10px] uppercase tracking-widest border-t-2 border-indigo-700">
-              <td colSpan={6} className="px-3 py-1 bg-indigo-700">
+              <td colSpan={6} className="px-4 py-1 bg-indigo-700">
                 TARDE
               </td>
             </tr>
