@@ -99,8 +99,12 @@ export function BookingModal({
     setError('');
 
     const targetResourceId = resourceId || (resources.find((r) => !isResourceBlocked(r.id))?.id || '');
+    const finalEmail =
+      professorEmail ||
+      user?.email ||
+      (professorName ? `${professorName.toLowerCase().trim().replace(/[^a-z0-9]/g, '.')}@pedrorizzi.edu.br` : 'professor@pedrorizzi.edu.br');
 
-    if (!targetResourceId || !periodId || !date || !professorName || !professorEmail || !turma) {
+    if (!targetResourceId || !periodId || !date || !professorName || !turma) {
       setError('Por favor, preencha todos os campos obrigatórios (Recurso, Data, Horário, Nome e Turma).');
       return;
     }
@@ -127,7 +131,7 @@ export function BookingModal({
           periodName: selectedPeriod ? selectedPeriod.name : periodId,
           quantity: 1,
           professorName,
-          professorEmail,
+          professorEmail: finalEmail,
           turma,
           justification,
         });
@@ -140,7 +144,7 @@ export function BookingModal({
           periodName: selectedPeriod ? selectedPeriod.name : periodId,
           quantity: 1,
           professorName,
-          professorEmail,
+          professorEmail: finalEmail,
           turma,
           justification,
         });
