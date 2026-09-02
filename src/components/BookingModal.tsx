@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { Resource, Booking, DEFAULT_PERIODS } from '@/lib/types';
+import { Resource, Booking, Block, DEFAULT_PERIODS } from '@/lib/types';
 import { DataService } from '@/lib/dataService';
 import { useAuth } from './GoogleAuthProvider';
 import { AlertCircle, Check, Repeat, Sparkles, Edit3 } from 'lucide-react';
@@ -12,6 +12,7 @@ interface BookingModalProps {
   onClose: () => void;
   onSuccess: () => void;
   resources: Resource[];
+  blocks?: Block[];
   initialResourceId?: string;
   initialPeriodId?: string;
   initialDate: string;
@@ -23,6 +24,7 @@ export function BookingModal({
   onClose,
   onSuccess,
   resources,
+  blocks = [],
   initialResourceId,
   initialPeriodId,
   initialDate,
@@ -47,7 +49,26 @@ export function BookingModal({
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
-  // Auto select valid resource or populate from bookingToEdit
+  const isResourceBlocked = (resId: string) => {
+    if (!blocks || blocks.length === 0) return false;
+    const periodObj = DEFAULT_PERIODS.find((p) => p.id === periodId);
+    const isMatutino = periodObj?.shift === 'matutino';
+    const isVespertino = periodObj?.shift === 'vespertino';
+
+    return blocks.some(
+      (b) =>
+        b.date === date &&
+        (b.resourceId === 'all' || b.resourceId === resId) &&
+        (
+          b.periodId === 'all_day' ||
+          b.periodId === periodId ||
+          (b.periodId === 'matutino' && isMatutino) ||
+          (b.periodId === 'vespertino' && isVespertino)
+        )
+    );
+  };
+
+  // Auto select valid unblocked resource or populate from bookingToEdit
   useEffect(() => {
     if (bookingToEdit) {
       setResourceId(bookingToEdit.resourceId);
@@ -58,10 +79,11 @@ export function BookingModal({
       setTurma(bookingToEdit.turma || '');
       setJustification(bookingToEdit.justification || '');
     } else {
-      if (initialResourceId) {
+      if (initialResourceId && !isResourceBlocked(initialResourceId)) {
         setResourceId(initialResourceId);
-      } else if (resources.length > 0 && (!resourceId || !resources.some((r) => r.id === resourceId))) {
-        setResourceId(resources[0].id);
+      } else {
+        const firstAvailable = resources.find((r) => !isResourceBlocked(r.id));
+        if (firstAvailable) setResourceId(firstAvailable.id);
       }
       if (initialPeriodId) setPeriodId(initialPeriodId);
       if (initialDate) setDate(initialDate);
@@ -76,10 +98,15 @@ export function BookingModal({
     e.preventDefault();
     setError('');
 
-    const targetResourceId = resourceId || (resources.length > 0 ? resources[0].id : '');
+    const targetResourceId = resourceId || (resources.find((r) => !isResourceBlocked(r.id))?.id || '');
 
     if (!targetResourceId || !periodId || !date || !professorName || !professorEmail || !turma) {
       setError('Por favor, preencha todos os campos obrigatórios (Recurso, Data, Horário, Nome e Turma).');
+      return;
+    }
+
+    if (isResourceBlocked(targetResourceId)) {
+      setError('Este recurso está bloqueado administrativamente para a data e horário selecionados.');
       return;
     }
 
@@ -90,7 +117,6 @@ export function BookingModal({
 
     try {
       if (bookingToEdit) {
-        // Update existing booking
         DataService.deleteBooking(bookingToEdit.id);
         DataService.saveBooking({
           id: bookingToEdit.id,
@@ -106,7 +132,6 @@ export function BookingModal({
           justification,
         });
       } else {
-        // Create new booking
         DataService.saveBooking({
           resourceId: targetResourceId,
           resourceName: selectedResource ? selectedResource.name : 'Recurso Escolar',
@@ -170,18 +195,21 @@ export function BookingModal({
               Recurso Escolar *
             </label>
             <select
-              value={resourceId || (resources[0]?.id || '')}
+              value={resourceId}
               onChange={(e) => setResourceId(e.target.value)}
               className="w-full bg-slate-50 border border-gray-200 rounded-xl px-3 py-2.5 text-sm font-semibold text-gray-900 focus:ring-2 focus:ring-indigo-500 focus:bg-white transition-all outline-none"
             >
               {resources.length === 0 ? (
                 <option value="">Carregando recursos...</option>
               ) : (
-                resources.map((res) => (
-                  <option key={res.id} value={res.id}>
-                    {res.name}
-                  </option>
-                ))
+                resources.map((res) => {
+                  const blocked = isResourceBlocked(res.id);
+                  return (
+                    <option key={res.id} value={res.id} disabled={blocked}>
+                      {res.name} {blocked ? ' 🔒 (Bloqueado neste horário)' : ''}
+                    </option>
+                  );
+                })
               )}
             </select>
           </div>

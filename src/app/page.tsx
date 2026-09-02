@@ -227,6 +227,7 @@ export default function HomePage() {
         }}
         onSuccess={fetchData}
         resources={resources}
+        blocks={blocks}
         initialResourceId={selectedSlot.resourceId}
         initialPeriodId={selectedSlot.periodId}
         initialDate={selectedSlot.date || selectedDateStr}

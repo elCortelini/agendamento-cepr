@@ -63,9 +63,24 @@ export function WeekCalendarGrid({
     const isMatutino = periodObj?.shift === 'matutino';
     const isVespertino = periodObj?.shift === 'vespertino';
 
-    const slotBlock = blocks.find(
+    // Block for ALL resources in the school
+    const allResourcesBlock = blocks.find(
       (b) =>
         b.date === dateStr &&
+        b.resourceId === 'all' &&
+        (
+          b.periodId === 'all_day' ||
+          b.periodId === periodId ||
+          (b.periodId === 'matutino' && isMatutino) ||
+          (b.periodId === 'vespertino' && isVespertino)
+        )
+    );
+
+    // Blocks for SPECIFIC resources
+    const specificResourceBlocks = blocks.filter(
+      (b) =>
+        b.date === dateStr &&
+        b.resourceId !== 'all' &&
         (
           b.periodId === 'all_day' ||
           b.periodId === periodId ||
@@ -80,19 +95,19 @@ export function WeekCalendarGrid({
 
     return (
       <div className="space-y-1 min-h-[44px] flex flex-col justify-center p-0.5">
-        {slotBlock ? (
+        {allResourcesBlock ? (
           <div className="bg-slate-200/90 border border-slate-300 rounded-lg p-1.5 flex items-center justify-between text-slate-700 shadow-sm group">
             <div className="flex items-center space-x-1.5 truncate">
               <span className="p-0.5 bg-slate-300 rounded shrink-0">
                 <Lock className="w-3 h-3 text-slate-600" />
               </span>
-              <span className="text-[11px] font-bold truncate">{slotBlock.reason || 'Bloqueado'}</span>
+              <span className="text-[11px] font-bold truncate">{allResourcesBlock.reason || 'Bloqueado (Todos os Recursos)'}</span>
             </div>
             {user?.role === 'admin' ? (
               <button
-                onClick={() => handleDeleteBlock(slotBlock.id)}
+                onClick={() => handleDeleteBlock(allResourcesBlock.id)}
                 className="text-slate-400 hover:text-rose-600 p-0.5 rounded transition-colors"
-                title="Remover Bloqueio (Admin)"
+                title="Remover Bloqueio Geral (Admin)"
               >
                 <Trash2 className="w-3 h-3" />
               </button>
@@ -100,77 +115,117 @@ export function WeekCalendarGrid({
               <Lock className="w-3 h-3 text-slate-400 shrink-0 ml-1" />
             )}
           </div>
-        ) : slotBookings.length > 0 ? (
-          <div className="space-y-1">
-            {slotBookings.map((b) => {
-              const isAdmin = user?.role === 'admin';
-              const isMine = user?.email && b.professorEmail.toLowerCase() === user.email.toLowerCase();
-              const canModify = isAdmin || isMine;
-
-              return (
-                <div
-                  key={b.id}
-                  className={`bg-white border rounded-lg p-1.5 shadow-sm text-slate-800 flex items-center justify-between transition-all ${
-                    isMine ? 'border-indigo-300 ring-1 ring-indigo-200 bg-indigo-50/40' : 'border-slate-200'
-                  }`}
-                >
-                  <div className="flex items-center space-x-1.5 truncate min-w-0 pr-1">
-                    <span className="p-1 bg-indigo-50 rounded shrink-0">
-                      <Monitor className="w-3.5 h-3.5 text-indigo-600" />
-                    </span>
-                    <div className="truncate leading-tight">
-                      <span className="text-[11px] font-extrabold text-slate-900 block truncate">{b.professorName}</span>
-                      <span className="text-[9px] text-slate-500 font-medium block truncate">
-                        {b.resourceName.split('(')[0]}
-                      </span>
+        ) : (
+          <>
+            {/* Specific Resource Blocks */}
+            {specificResourceBlocks.length > 0 && (
+              <div className="space-y-1">
+                {specificResourceBlocks.map((sb) => {
+                  const resName = resources.find((r) => r.id === sb.resourceId)?.name.split('(')[0] || sb.resourceName || 'Recurso';
+                  return (
+                    <div
+                      key={sb.id}
+                      className="bg-amber-100/80 border border-amber-300 rounded-lg p-1.5 flex items-center justify-between text-amber-900 shadow-2xs group"
+                    >
+                      <div className="flex items-center space-x-1.5 truncate leading-tight">
+                        <span className="p-0.5 bg-amber-200 rounded shrink-0">
+                          <Lock className="w-3 h-3 text-amber-700" />
+                        </span>
+                        <div className="truncate">
+                          <span className="text-[10px] font-black block truncate text-amber-950">{resName}</span>
+                          <span className="text-[9px] font-medium block truncate text-amber-800">{sb.reason || 'Bloqueado'}</span>
+                        </div>
+                      </div>
+                      {user?.role === 'admin' ? (
+                        <button
+                          onClick={() => handleDeleteBlock(sb.id)}
+                          className="text-amber-600 hover:text-rose-600 p-0.5 rounded transition-colors shrink-0"
+                          title="Remover Bloqueio de Recurso (Admin)"
+                        >
+                          <Trash2 className="w-3 h-3" />
+                        </button>
+                      ) : (
+                        <Lock className="w-3 h-3 text-amber-500 shrink-0 ml-1" />
+                      )}
                     </div>
-                  </div>
+                  );
+                })}
+              </div>
+            )}
 
-                  <div className="flex items-center space-x-1 shrink-0 ml-1">
-                    {b.turma && (
-                      <span className="font-black text-xs text-indigo-800 bg-indigo-100 px-1.5 py-0.5 rounded border border-indigo-300/80 shadow-2xs tracking-wide">
-                        {b.turma}
-                      </span>
-                    )}
+            {/* Active Bookings */}
+            {slotBookings.length > 0 && (
+              <div className="space-y-1">
+                {slotBookings.map((b) => {
+                  const isAdmin = user?.role === 'admin';
+                  const isMine = user?.email && b.professorEmail.toLowerCase() === user.email.toLowerCase();
+                  const canModify = isAdmin || isMine;
 
-                    {canModify && onEditBooking && (
-                      <button
-                        onClick={() => onEditBooking(b)}
-                        className="text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 p-0.5 rounded transition-colors shrink-0"
-                        title={isAdmin ? 'Editar reserva (Admin)' : 'Editar minha reserva'}
-                      >
-                        <Edit3 className="w-3 h-3" />
-                      </button>
-                    )}
+                  return (
+                    <div
+                      key={b.id}
+                      className={`bg-white border rounded-lg p-1.5 shadow-sm text-slate-800 flex items-center justify-between transition-all ${
+                        isMine ? 'border-indigo-300 ring-1 ring-indigo-200 bg-indigo-50/40' : 'border-slate-200'
+                      }`}
+                    >
+                      <div className="flex items-center space-x-1.5 truncate min-w-0 pr-1">
+                        <span className="p-1 bg-indigo-50 rounded shrink-0">
+                          <Monitor className="w-3.5 h-3.5 text-indigo-600" />
+                        </span>
+                        <div className="truncate leading-tight">
+                          <span className="text-[11px] font-extrabold text-slate-900 block truncate">{b.professorName}</span>
+                          <span className="text-[9px] text-slate-500 font-medium block truncate">
+                            {b.resourceName.split('(')[0]}
+                          </span>
+                        </div>
+                      </div>
 
-                    {canModify ? (
-                      <button
-                        onClick={() => handleDeleteBooking(b.id, b.professorName)}
-                        className="text-slate-300 hover:text-rose-600 hover:bg-rose-50 p-0.5 rounded transition-colors shrink-0"
-                        title={isAdmin ? 'Excluir horário (Admin)' : 'Cancelar minha reserva'}
-                      >
-                        <Trash2 className="w-3 h-3" />
-                      </button>
-                    ) : (
-                      <span title="Reservado por outro professor">
-                        <Lock className="w-3 h-3 text-slate-300 shrink-0" />
-                      </span>
-                    )}
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        ) : null}
+                      <div className="flex items-center space-x-1 shrink-0 ml-1">
+                        {b.turma && (
+                          <span className="font-black text-xs text-indigo-800 bg-indigo-100 px-1.5 py-0.5 rounded border border-indigo-300/80 shadow-2xs tracking-wide">
+                            {b.turma}
+                          </span>
+                        )}
 
-        {!slotBlock && (
-          <button
-            onClick={() => onSelectSlot(dateStr, periodId)}
-            className="w-full border border-dashed border-slate-300 hover:border-indigo-500 hover:bg-indigo-50/50 rounded-lg py-1 text-slate-400 hover:text-indigo-600 font-semibold text-[11px] transition-all flex items-center justify-center gap-1 group"
-          >
-            <Plus className="w-3 h-3 group-hover:scale-110 transition-transform" />
-            <span>Nova</span>
-          </button>
+                        {canModify && onEditBooking && (
+                          <button
+                            onClick={() => onEditBooking(b)}
+                            className="text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 p-0.5 rounded transition-colors shrink-0"
+                            title={isAdmin ? 'Editar reserva (Admin)' : 'Editar minha reserva'}
+                          >
+                            <Edit3 className="w-3 h-3" />
+                          </button>
+                        )}
+
+                        {canModify ? (
+                          <button
+                            onClick={() => handleDeleteBooking(b.id, b.professorName)}
+                            className="text-slate-300 hover:text-rose-600 hover:bg-rose-50 p-0.5 rounded transition-colors shrink-0"
+                            title={isAdmin ? 'Excluir horário (Admin)' : 'Cancelar minha reserva'}
+                          >
+                            <Trash2 className="w-3 h-3" />
+                          </button>
+                        ) : (
+                          <span title="Reservado por outro professor">
+                            <Lock className="w-3 h-3 text-slate-300 shrink-0" />
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+
+            {/* Nova Reserva Button (Available if at least 1 resource is unblocked) */}
+            <button
+              onClick={() => onSelectSlot(dateStr, periodId)}
+              className="w-full border border-dashed border-slate-300 hover:border-indigo-500 hover:bg-indigo-50/50 rounded-lg py-1 text-slate-400 hover:text-indigo-600 font-semibold text-[11px] transition-all flex items-center justify-center gap-1 group mt-1"
+            >
+              <Plus className="w-3 h-3 group-hover:scale-110 transition-transform" />
+              <span>Nova</span>
+            </button>
+          </>
         )}
       </div>
     );
