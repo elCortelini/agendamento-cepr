@@ -68,7 +68,19 @@ export function BookingModal({
     );
   };
 
-  // Auto select valid unblocked resource or populate from bookingToEdit
+  const isResourceAlreadyBooked = (resId: string) => {
+    const currentBookings = DataService.getBookings();
+    return currentBookings.some(
+      (b) =>
+        b.status === 'active' &&
+        b.date === date &&
+        b.periodId === periodId &&
+        b.resourceId === resId &&
+        (!bookingToEdit || b.id !== bookingToEdit.id)
+    );
+  };
+
+  // Auto select valid unblocked & unbooked resource or populate from bookingToEdit
   useEffect(() => {
     if (bookingToEdit) {
       setResourceId(bookingToEdit.resourceId);
@@ -79,10 +91,12 @@ export function BookingModal({
       setTurma(bookingToEdit.turma || '');
       setJustification(bookingToEdit.justification || '');
     } else {
-      if (initialResourceId && !isResourceBlocked(initialResourceId)) {
+      if (initialResourceId && !isResourceBlocked(initialResourceId) && !isResourceAlreadyBooked(initialResourceId)) {
         setResourceId(initialResourceId);
       } else {
-        const firstAvailable = resources.find((r) => !isResourceBlocked(r.id));
+        const firstAvailable = resources.find(
+          (r) => !isResourceBlocked(r.id) && !isResourceAlreadyBooked(r.id)
+        );
         if (firstAvailable) setResourceId(firstAvailable.id);
       }
       if (initialPeriodId) setPeriodId(initialPeriodId);
@@ -98,7 +112,7 @@ export function BookingModal({
     e.preventDefault();
     setError('');
 
-    const targetResourceId = resourceId || (resources.find((r) => !isResourceBlocked(r.id))?.id || '');
+    const targetResourceId = resourceId || (resources.find((r) => !isResourceBlocked(r.id) && !isResourceAlreadyBooked(r.id))?.id || '');
     const finalEmail =
       professorEmail ||
       user?.email ||
@@ -112,6 +126,50 @@ export function BookingModal({
     if (isResourceBlocked(targetResourceId)) {
       setError('Este recurso está bloqueado administrativamente para a data e horário selecionados.');
       return;
+    }
+
+    // Validation: Check if the exact same resource is already booked for this period
+    const currentBookings = DataService.getBookings();
+    const conflictBooking = currentBookings.find(
+      (b) =>
+        b.status === 'active' &&
+        b.date === date &&
+        b.periodId === periodId &&
+        b.resourceId === targetResourceId &&
+        (!bookingToEdit || b.id !== bookingToEdit.id)
+    );
+
+    if (conflictBooking) {
+      setError(
+        `O recurso "${conflictBooking.resourceName}" JÁ ESTÁ RESERVADO para este mesmo horário pelo Prof. ${conflictBooking.professorName} (${conflictBooking.turma || 'Outra Turma'}). Por favor, escolha outro recurso ou horário.`
+      );
+      return;
+    }
+
+    // Validation for recurring bookings
+    if (isRecurring && recurrenceUntilDate) {
+      let nextDate = addWeeks(new Date(date + 'T12:00:00'), 1);
+      const endDate = new Date(recurrenceUntilDate + 'T23:59:59');
+
+      while (nextDate <= endDate) {
+        const dStr = format(nextDate, 'yyyy-MM-dd');
+        const futureConflict = currentBookings.find(
+          (b) =>
+            b.status === 'active' &&
+            b.date === dStr &&
+            b.periodId === periodId &&
+            b.resourceId === targetResourceId
+        );
+
+        if (futureConflict) {
+          setError(
+            `Conflito na reserva recorrente: O recurso já está reservado no dia ${format(nextDate, 'dd/MM/yyyy')} pelo Prof. ${futureConflict.professorName} (${futureConflict.turma}).`
+          );
+          return;
+        }
+
+        nextDate = addWeeks(nextDate, 1);
+      }
     }
 
     const selectedResource = resources.find((r) => r.id === targetResourceId);
@@ -148,6 +206,29 @@ export function BookingModal({
           turma,
           justification,
         });
+
+        // Save recurring bookings if checked
+        if (isRecurring && recurrenceUntilDate) {
+          let nextDate = addWeeks(new Date(date + 'T12:00:00'), 1);
+          const endDate = new Date(recurrenceUntilDate + 'T23:59:59');
+
+          while (nextDate <= endDate) {
+            const dStr = format(nextDate, 'yyyy-MM-dd');
+            DataService.saveBooking({
+              resourceId: targetResourceId,
+              resourceName: selectedResource ? selectedResource.name : 'Recurso Escolar',
+              date: dStr,
+              periodId,
+              periodName: selectedPeriod ? selectedPeriod.name : periodId,
+              quantity: 1,
+              professorName,
+              professorEmail: finalEmail,
+              turma,
+              justification,
+            });
+            nextDate = addWeeks(nextDate, 1);
+          }
+        }
       }
 
       onSuccess();
@@ -208,9 +289,15 @@ export function BookingModal({
               ) : (
                 resources.map((res) => {
                   const blocked = isResourceBlocked(res.id);
+                  const alreadyBooked = isResourceAlreadyBooked(res.id);
+                  const disabled = blocked || alreadyBooked;
+                  let statusText = '';
+                  if (blocked) statusText = ' 🔒 (Bloqueado neste horário)';
+                  else if (alreadyBooked) statusText = ' ❌ (Já reservado por outro professor)';
+
                   return (
-                    <option key={res.id} value={res.id} disabled={blocked}>
-                      {res.name} {blocked ? ' 🔒 (Bloqueado neste horário)' : ''}
+                    <option key={res.id} value={res.id} disabled={disabled}>
+                      {res.name} {statusText}
                     </option>
                   );
                 })
