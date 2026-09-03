@@ -35,22 +35,6 @@ const INITIAL_RESOURCES: Resource[] = [
     description: 'Espaço da biblioteca para leitura e atividades.',
     active: true,
   },
-  {
-    id: 'res-carrinho-tablets-a',
-    name: 'Carrinho de Chromebooks',
-    type: 'tablet',
-    totalQuantity: 30,
-    description: 'Carrinho móvel contendo 30 Chromebooks.',
-    active: true,
-  },
-  {
-    id: 'res-sala-video',
-    name: 'Sala de Vídeo / Multimídia',
-    type: 'room',
-    totalQuantity: 1,
-    description: 'Sala climatizada com data show.',
-    active: true,
-  },
 ];
 
 // Helper to parse Firebase array/object
@@ -91,6 +75,8 @@ export const DataService = {
         const cloudResources = parseFirebaseData<Resource>(rawResources);
         if (cloudResources.length > 0) {
           localStorage.setItem('cepr_resources_cloud', JSON.stringify(cloudResources));
+        } else {
+          localStorage.setItem('cepr_resources_cloud', JSON.stringify(INITIAL_RESOURCES));
         }
       }
     } catch (e) {
@@ -142,6 +128,12 @@ export const DataService = {
     try {
       localStorage.setItem('cepr_resources_cloud', JSON.stringify(resources));
       fetch(`${FIREBASE_BASE_URL}/resources/${id}.json`, { method: 'DELETE' }).catch(() => {});
+      // Re-save total resources array in Firebase
+      fetch(`${FIREBASE_BASE_URL}/resources.json`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(resources),
+      }).catch(() => {});
     } catch (e) {}
   },
 
