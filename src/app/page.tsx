@@ -15,6 +15,7 @@ import {
   Lock,
   Grid,
   CalendarDays,
+  AlertTriangle,
 } from 'lucide-react';
 import { format, startOfWeek, addDays, subDays, addWeeks, subWeeks } from 'date-fns';
 
@@ -27,6 +28,7 @@ export default function HomePage() {
   const [bookings, setBookings] = useState<Booking[]>([]);
   const [blocks, setBlocks] = useState<Block[]>([]);
   const [loading, setLoading] = useState(true);
+  const [syncStatus, setSyncStatus] = useState<{ ok: boolean; error?: string }>({ ok: true });
 
   // Modal controls
   const [isBookingOpen, setIsBookingOpen] = useState(false);
@@ -44,6 +46,7 @@ export default function HomePage() {
     try {
       await DataService.syncCloudData();
     } catch (e) {}
+    setSyncStatus(DataService.getSyncStatus());
     setResources(DataService.getResources());
     setBookings(DataService.getBookings());
     setBlocks(DataService.getBlocks());
@@ -56,6 +59,7 @@ export default function HomePage() {
     // Fast polling every 2.5 seconds to guarantee cloud sync
     const interval = setInterval(() => {
       DataService.syncCloudData().then(() => {
+        setSyncStatus(DataService.getSyncStatus());
         setBookings(DataService.getBookings());
         setBlocks(DataService.getBlocks());
       });
@@ -67,6 +71,7 @@ export default function HomePage() {
       eventSource = new EventSource('https://agendamento-cepr-default-rtdb.firebaseio.com/bookings.json');
       eventSource.onmessage = () => {
         DataService.syncCloudData().then(() => {
+          setSyncStatus(DataService.getSyncStatus());
           setBookings(DataService.getBookings());
           setBlocks(DataService.getBlocks());
         });
@@ -121,6 +126,27 @@ export default function HomePage() {
 
   return (
     <div className="space-y-3.5 font-sans">
+      {/* Cloud Sync Alert Banner if 401/403 or network issue */}
+      {!syncStatus.ok && (
+        <div className="bg-rose-600 text-white rounded-2xl p-4 shadow-lg flex flex-col sm:flex-row sm:items-center justify-between gap-3 animate-in fade-in">
+          <div className="flex items-center space-x-3">
+            <AlertTriangle className="w-6 h-6 shrink-0 text-amber-300" />
+            <div className="text-xs font-bold leading-tight">
+              <p className="font-extrabold text-sm text-amber-200">⚠️ ALERTA DE CONEXÃO COM O FIREBASE</p>
+              <p className="mt-0.5">{syncStatus.error}</p>
+            </div>
+          </div>
+          <a
+            href="https://console.firebase.google.com"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="bg-white text-rose-700 font-extrabold text-xs px-3.5 py-2 rounded-xl shadow hover:bg-rose-50 transition-colors shrink-0 whitespace-nowrap text-center"
+          >
+            Ajustar Regras no Console
+          </a>
+        </div>
+      )}
+
       {/* Top Controls Header Card */}
       <div className="bg-white rounded-2xl p-3.5 border border-slate-200 shadow-sm flex flex-col md:flex-row md:items-center justify-between gap-3">
         <div className="flex items-center space-x-3">

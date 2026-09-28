@@ -1,4 +1,5 @@
 import { Resource, Booking, Block } from './types';
+import { auth } from './firebase';
 
 const FIREBASE_BASE_URL = 'https://agendamento-cepr-default-rtdb.firebaseio.com';
 
@@ -37,6 +38,8 @@ const INITIAL_RESOURCES: Resource[] = [
   },
 ];
 
+let lastSyncStatus: { ok: boolean; error?: string } = { ok: true };
+
 // Helper to parse Firebase array/object
 function parseFirebaseData<T>(data: any): T[] {
   if (!data) return [];
@@ -47,21 +50,44 @@ function parseFirebaseData<T>(data: any): T[] {
   return [];
 }
 
+async function getAuthParam(): Promise<string> {
+  try {
+    if (auth && auth.currentUser) {
+      const token = await auth.currentUser.getIdToken();
+      if (token) return `?auth=${token}`;
+    }
+  } catch (e) {}
+  return '';
+}
+
 export const DataService = {
+  getSyncStatus() {
+    return lastSyncStatus;
+  },
+
   // Sync Cloud Data from Firebase to local cache
   async syncCloudData(): Promise<void> {
     if (typeof window === 'undefined') return;
     try {
+      const authQuery = await getAuthParam();
+      const delimiter = authQuery ? '&' : '?';
+
       // Fetch Bookings from Firebase Cloud DB
-      const resBookings = await fetch(`${FIREBASE_BASE_URL}/bookings.json?cachebuster=${Date.now()}`);
+      const resBookings = await fetch(`${FIREBASE_BASE_URL}/bookings.json${authQuery}${delimiter}cb=${Date.now()}`);
       if (resBookings.ok) {
         const rawBookings = await resBookings.json();
         const cloudBookings = parseFirebaseData<Booking>(rawBookings);
         localStorage.setItem('cepr_bookings_cloud', JSON.stringify(cloudBookings));
+        lastSyncStatus = { ok: true };
+      } else if (resBookings.status === 401 || resBookings.status === 403) {
+        lastSyncStatus = {
+          ok: false,
+          error: 'Acesso ao banco Firebase não autorizado (HTTP 401/403). Ajuste as regras na aba Regras do Firebase Console para ".read": true, ".write": true.',
+        };
       }
 
       // Fetch Blocks from Firebase Cloud DB
-      const resBlocks = await fetch(`${FIREBASE_BASE_URL}/blocks.json?cachebuster=${Date.now()}`);
+      const resBlocks = await fetch(`${FIREBASE_BASE_URL}/blocks.json${authQuery}${delimiter}cb=${Date.now()}`);
       if (resBlocks.ok) {
         const rawBlocks = await resBlocks.json();
         const cloudBlocks = parseFirebaseData<Block>(rawBlocks);
@@ -69,7 +95,7 @@ export const DataService = {
       }
 
       // Fetch Resources from Firebase Cloud DB
-      const resResources = await fetch(`${FIREBASE_BASE_URL}/resources.json?cachebuster=${Date.now()}`);
+      const resResources = await fetch(`${FIREBASE_BASE_URL}/resources.json${authQuery}${delimiter}cb=${Date.now()}`);
       if (resResources.ok) {
         const rawResources = await resResources.json();
         const cloudResources = parseFirebaseData<Resource>(rawResources);
@@ -79,8 +105,9 @@ export const DataService = {
           localStorage.setItem('cepr_resources_cloud', JSON.stringify(INITIAL_RESOURCES));
         }
       }
-    } catch (e) {
+    } catch (e: any) {
       console.warn('Firebase sync warning:', e);
+      lastSyncStatus = { ok: false, error: e.message || 'Erro de conexão com o banco na nuvem.' };
     }
   },
 
@@ -114,7 +141,8 @@ export const DataService = {
 
     try {
       localStorage.setItem('cepr_resources_cloud', JSON.stringify(resources));
-      await fetch(`${FIREBASE_BASE_URL}/resources/${newRes.id}.json`, {
+      const authQuery = await getAuthParam();
+      await fetch(`${FIREBASE_BASE_URL}/resources/${newRes.id}.json${authQuery}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(newRes),
@@ -127,8 +155,9 @@ export const DataService = {
     const resources = this.getResources().filter((r) => r.id !== id);
     try {
       localStorage.setItem('cepr_resources_cloud', JSON.stringify(resources));
-      await fetch(`${FIREBASE_BASE_URL}/resources/${id}.json`, { method: 'DELETE' });
-      await fetch(`${FIREBASE_BASE_URL}/resources.json`, {
+      const authQuery = await getAuthParam();
+      await fetch(`${FIREBASE_BASE_URL}/resources/${id}.json${authQuery}`, { method: 'DELETE' });
+      await fetch(`${FIREBASE_BASE_URL}/resources.json${authQuery}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(resources),
@@ -173,12 +202,20 @@ export const DataService = {
 
     try {
       localStorage.setItem('cepr_bookings_cloud', JSON.stringify(bookings));
-      await fetch(`${FIREBASE_BASE_URL}/bookings/${newBooking.id}.json`, {
+      const authQuery = await getAuthParam();
+      const res = await fetch(`${FIREBASE_BASE_URL}/bookings/${newBooking.id}.json${authQuery}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(newBooking),
       });
-    } catch (e) {}
+
+      if (!res.ok) {
+        throw new Error(`Erro de escrita no banco Firebase (HTTP ${res.status}). Verifique as regras do Firebase.`);
+      }
+    } catch (e: any) {
+      console.error('Error saving booking to cloud:', e);
+      throw e;
+    }
     return newBooking;
   },
 
@@ -186,7 +223,8 @@ export const DataService = {
     const bookings = this.getBookings().filter((b) => b.id !== id);
     try {
       localStorage.setItem('cepr_bookings_cloud', JSON.stringify(bookings));
-      await fetch(`${FIREBASE_BASE_URL}/bookings/${id}.json`, { method: 'DELETE' });
+      const authQuery = await getAuthParam();
+      await fetch(`${FIREBASE_BASE_URL}/bookings/${id}.json${authQuery}`, { method: 'DELETE' });
     } catch (e) {}
   },
 
@@ -217,7 +255,8 @@ export const DataService = {
     blocks.push(newBlock);
     try {
       localStorage.setItem('cepr_blocks_cloud', JSON.stringify(blocks));
-      await fetch(`${FIREBASE_BASE_URL}/blocks/${newBlock.id}.json`, {
+      const authQuery = await getAuthParam();
+      await fetch(`${FIREBASE_BASE_URL}/blocks/${newBlock.id}.json${authQuery}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(newBlock),
@@ -230,7 +269,8 @@ export const DataService = {
     const blocks = this.getBlocks().filter((b) => b.id !== id);
     try {
       localStorage.setItem('cepr_blocks_cloud', JSON.stringify(blocks));
-      await fetch(`${FIREBASE_BASE_URL}/blocks/${id}.json`, { method: 'DELETE' });
+      const authQuery = await getAuthParam();
+      await fetch(`${FIREBASE_BASE_URL}/blocks/${id}.json${authQuery}`, { method: 'DELETE' });
     } catch (e) {}
   },
 };
