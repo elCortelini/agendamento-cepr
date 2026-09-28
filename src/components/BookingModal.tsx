@@ -108,79 +108,85 @@ export function BookingModal({
     }
   }, [bookingToEdit, initialResourceId, initialPeriodId, initialDate, resources, isOpen, user]);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
-
-    const targetResourceId = resourceId || (resources.find((r) => !isResourceBlocked(r.id) && !isResourceAlreadyBooked(r.id))?.id || '');
-    const finalEmail =
-      professorEmail ||
-      user?.email ||
-      (professorName ? `${professorName.toLowerCase().trim().replace(/[^a-z0-9]/g, '.')}@pedrorizzi.edu.br` : 'professor@pedrorizzi.edu.br');
-
-    if (!targetResourceId || !periodId || !date || !professorName || !turma) {
-      setError('Por favor, preencha todos os campos obrigatórios (Recurso, Data, Horário, Nome e Turma).');
-      return;
-    }
-
-    if (isResourceBlocked(targetResourceId)) {
-      setError('Este recurso está bloqueado administrativamente para a data e horário selecionados.');
-      return;
-    }
-
-    // Validation: Check if the exact same resource is already booked for this period
-    const currentBookings = DataService.getBookings();
-    const conflictBooking = currentBookings.find(
-      (b) =>
-        b.status === 'active' &&
-        b.date === date &&
-        b.periodId === periodId &&
-        b.resourceId === targetResourceId &&
-        (!bookingToEdit || b.id !== bookingToEdit.id)
-    );
-
-    if (conflictBooking) {
-      setError(
-        `O recurso "${conflictBooking.resourceName}" JÁ ESTÁ RESERVADO para este mesmo horário pelo Prof. ${conflictBooking.professorName} (${conflictBooking.turma || 'Outra Turma'}). Por favor, escolha outro recurso ou horário.`
-      );
-      return;
-    }
-
-    // Validation for recurring bookings
-    if (isRecurring && recurrenceUntilDate) {
-      let nextDate = addWeeks(new Date(date + 'T12:00:00'), 1);
-      const endDate = new Date(recurrenceUntilDate + 'T23:59:59');
-
-      while (nextDate <= endDate) {
-        const dStr = format(nextDate, 'yyyy-MM-dd');
-        const futureConflict = currentBookings.find(
-          (b) =>
-            b.status === 'active' &&
-            b.date === dStr &&
-            b.periodId === periodId &&
-            b.resourceId === targetResourceId
-        );
-
-        if (futureConflict) {
-          setError(
-            `Conflito na reserva recorrente: O recurso já está reservado no dia ${format(nextDate, 'dd/MM/yyyy')} pelo Prof. ${futureConflict.professorName} (${futureConflict.turma}).`
-          );
-          return;
-        }
-
-        nextDate = addWeeks(nextDate, 1);
-      }
-    }
-
-    const selectedResource = resources.find((r) => r.id === targetResourceId);
-    const selectedPeriod = DEFAULT_PERIODS.find((p) => p.id === periodId);
-
     setLoading(true);
 
     try {
+      // Sync cloud data first before saving to guarantee zero conflict
+      await DataService.syncCloudData();
+
+      const targetResourceId = resourceId || (resources.find((r) => !isResourceBlocked(r.id) && !isResourceAlreadyBooked(r.id))?.id || '');
+      const finalEmail =
+        professorEmail ||
+        user?.email ||
+        (professorName ? `${professorName.toLowerCase().trim().replace(/[^a-z0-9]/g, '.')}@pedrorizzi.edu.br` : 'professor@pedrorizzi.edu.br');
+
+      if (!targetResourceId || !periodId || !date || !professorName || !turma) {
+        setError('Por favor, preencha todos os campos obrigatórios (Recurso, Data, Horário, Nome e Turma).');
+        setLoading(false);
+        return;
+      }
+
+      if (isResourceBlocked(targetResourceId)) {
+        setError('Este recurso está bloqueado administrativamente para a data e horário selecionados.');
+        setLoading(false);
+        return;
+      }
+
+      // Validation: Check if the exact same resource is already booked for this period
+      const currentBookings = DataService.getBookings();
+      const conflictBooking = currentBookings.find(
+        (b) =>
+          b.status === 'active' &&
+          b.date === date &&
+          b.periodId === periodId &&
+          b.resourceId === targetResourceId &&
+          (!bookingToEdit || b.id !== bookingToEdit.id)
+      );
+
+      if (conflictBooking) {
+        setError(
+          `O recurso "${conflictBooking.resourceName}" JÁ ESTÁ RESERVADO para este mesmo horário pelo Prof. ${conflictBooking.professorName} (${conflictBooking.turma || 'Outra Turma'}). Por favor, escolha outro recurso ou horário.`
+        );
+        setLoading(false);
+        return;
+      }
+
+      // Validation for recurring bookings
+      if (isRecurring && recurrenceUntilDate) {
+        let nextDate = addWeeks(new Date(date + 'T12:00:00'), 1);
+        const endDate = new Date(recurrenceUntilDate + 'T23:59:59');
+
+        while (nextDate <= endDate) {
+          const dStr = format(nextDate, 'yyyy-MM-dd');
+          const futureConflict = currentBookings.find(
+            (b) =>
+              b.status === 'active' &&
+              b.date === dStr &&
+              b.periodId === periodId &&
+              b.resourceId === targetResourceId
+          );
+
+          if (futureConflict) {
+            setError(
+              `Conflito na reserva recorrente: O recurso já está reservado no dia ${format(nextDate, 'dd/MM/yyyy')} pelo Prof. ${futureConflict.professorName} (${futureConflict.turma}).`
+            );
+            setLoading(false);
+            return;
+          }
+
+          nextDate = addWeeks(nextDate, 1);
+        }
+      }
+
+      const selectedResource = resources.find((r) => r.id === targetResourceId);
+      const selectedPeriod = DEFAULT_PERIODS.find((p) => p.id === periodId);
+
       if (bookingToEdit) {
-        DataService.deleteBooking(bookingToEdit.id);
-        DataService.saveBooking({
+        await DataService.deleteBooking(bookingToEdit.id);
+        await DataService.saveBooking({
           id: bookingToEdit.id,
           resourceId: targetResourceId,
           resourceName: selectedResource ? selectedResource.name : 'Recurso Escolar',
@@ -194,7 +200,7 @@ export function BookingModal({
           justification,
         });
       } else {
-        DataService.saveBooking({
+        await DataService.saveBooking({
           resourceId: targetResourceId,
           resourceName: selectedResource ? selectedResource.name : 'Recurso Escolar',
           date,
@@ -214,7 +220,7 @@ export function BookingModal({
 
           while (nextDate <= endDate) {
             const dStr = format(nextDate, 'yyyy-MM-dd');
-            DataService.saveBooking({
+            await DataService.saveBooking({
               resourceId: targetResourceId,
               resourceName: selectedResource ? selectedResource.name : 'Recurso Escolar',
               date: dStr,
@@ -231,6 +237,7 @@ export function BookingModal({
         }
       }
 
+      await DataService.syncCloudData();
       onSuccess();
       onClose();
     } catch (err: any) {

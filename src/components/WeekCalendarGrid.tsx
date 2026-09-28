@@ -33,24 +33,26 @@ export function WeekCalendarGrid({
 
   const todayStr = format(new Date(), 'yyyy-MM-dd');
 
-  const handleDeleteBooking = (bookingId: string, professorName: string) => {
+  const handleDeleteBooking = async (bookingId: string, professorName: string) => {
     const isSelf = user?.role === 'admin' ? 'como Administrador' : 'sua própria reserva';
     if (!confirm(`Confirmar exclusão da reserva de ${professorName} (${isSelf})?`)) return;
 
     try {
-      DataService.deleteBooking(bookingId);
+      await DataService.deleteBooking(bookingId);
+      await DataService.syncCloudData();
       onRefresh();
     } catch (e) {
       alert('Erro ao excluir a reserva.');
     }
   };
 
-  const handleDeleteBlock = (blockId: string) => {
+  const handleDeleteBlock = async (blockId: string) => {
     if (user?.role !== 'admin') return;
     if (!confirm('Confirmar remoção deste bloqueio administrativo?')) return;
 
     try {
-      DataService.deleteBlock(blockId);
+      await DataService.deleteBlock(blockId);
+      await DataService.syncCloudData();
       onRefresh();
     } catch (e) {
       alert('Erro ao remover o bloqueio.');

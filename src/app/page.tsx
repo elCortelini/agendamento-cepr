@@ -52,13 +52,31 @@ export default function HomePage() {
 
   useEffect(() => {
     fetchData();
+
+    // Fast polling every 2.5 seconds to guarantee cloud sync
     const interval = setInterval(() => {
       DataService.syncCloudData().then(() => {
         setBookings(DataService.getBookings());
         setBlocks(DataService.getBlocks());
       });
-    }, 8000);
-    return () => clearInterval(interval);
+    }, 2500);
+
+    // EventSource SSE for instant 0ms push notifications from Firebase
+    let eventSource: EventSource | null = null;
+    try {
+      eventSource = new EventSource('https://agendamento-cepr-default-rtdb.firebaseio.com/bookings.json');
+      eventSource.onmessage = () => {
+        DataService.syncCloudData().then(() => {
+          setBookings(DataService.getBookings());
+          setBlocks(DataService.getBlocks());
+        });
+      };
+    } catch (e) {}
+
+    return () => {
+      clearInterval(interval);
+      if (eventSource) eventSource.close();
+    };
   }, [currentDate]);
 
   const handlePrev = () => {
@@ -81,19 +99,22 @@ export default function HomePage() {
     setCurrentDate(new Date());
   };
 
-  const handleSelectSlotWeek = (dateStr: string, periodId: string) => {
+  const handleSelectSlotWeek = async (dateStr: string, periodId: string) => {
+    await fetchData();
     setBookingToEdit(null);
     setSelectedSlot({ date: dateStr, periodId, resourceId: resources[0]?.id });
     setIsBookingOpen(true);
   };
 
-  const handleSelectSlotDaily = (resourceId: string, periodId: string) => {
+  const handleSelectSlotDaily = async (resourceId: string, periodId: string) => {
+    await fetchData();
     setBookingToEdit(null);
     setSelectedSlot({ date: selectedDateStr, periodId, resourceId });
     setIsBookingOpen(true);
   };
 
-  const handleEditBooking = (booking: Booking) => {
+  const handleEditBooking = async (booking: Booking) => {
+    await fetchData();
     setBookingToEdit(booking);
     setIsBookingOpen(true);
   };
@@ -167,7 +188,8 @@ export default function HomePage() {
           </div>
 
           <button
-            onClick={() => {
+            onClick={async () => {
+              await fetchData();
               setBookingToEdit(null);
               setSelectedSlot({ date: selectedDateStr });
               setIsBookingOpen(true);
@@ -180,7 +202,10 @@ export default function HomePage() {
 
           {user?.role === 'admin' && (
             <button
-              onClick={() => setIsBlockOpen(true)}
+              onClick={async () => {
+                await fetchData();
+                setIsBlockOpen(true);
+              }}
               className="flex items-center gap-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs px-3 py-1.5 rounded-xl transition-all border border-slate-200"
             >
               <Lock className="w-3.5 h-3.5 text-amber-600" />

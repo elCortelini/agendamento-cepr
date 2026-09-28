@@ -53,7 +53,7 @@ export const DataService = {
     if (typeof window === 'undefined') return;
     try {
       // Fetch Bookings from Firebase Cloud DB
-      const resBookings = await fetch(`${FIREBASE_BASE_URL}/bookings.json`);
+      const resBookings = await fetch(`${FIREBASE_BASE_URL}/bookings.json?cachebuster=${Date.now()}`);
       if (resBookings.ok) {
         const rawBookings = await resBookings.json();
         const cloudBookings = parseFirebaseData<Booking>(rawBookings);
@@ -61,7 +61,7 @@ export const DataService = {
       }
 
       // Fetch Blocks from Firebase Cloud DB
-      const resBlocks = await fetch(`${FIREBASE_BASE_URL}/blocks.json`);
+      const resBlocks = await fetch(`${FIREBASE_BASE_URL}/blocks.json?cachebuster=${Date.now()}`);
       if (resBlocks.ok) {
         const rawBlocks = await resBlocks.json();
         const cloudBlocks = parseFirebaseData<Block>(rawBlocks);
@@ -69,7 +69,7 @@ export const DataService = {
       }
 
       // Fetch Resources from Firebase Cloud DB
-      const resResources = await fetch(`${FIREBASE_BASE_URL}/resources.json`);
+      const resResources = await fetch(`${FIREBASE_BASE_URL}/resources.json?cachebuster=${Date.now()}`);
       if (resResources.ok) {
         const rawResources = await resResources.json();
         const cloudResources = parseFirebaseData<Resource>(rawResources);
@@ -94,7 +94,7 @@ export const DataService = {
     return INITIAL_RESOURCES;
   },
 
-  saveResource(resourceData: Omit<Resource, 'id' | 'active'> & { id?: string; active?: boolean }): Resource {
+  async saveResource(resourceData: Omit<Resource, 'id' | 'active'> & { id?: string; active?: boolean }): Promise<Resource> {
     const resources = this.getResources();
     const newRes: Resource = {
       id: resourceData.id || `res-${Date.now()}`,
@@ -114,26 +114,25 @@ export const DataService = {
 
     try {
       localStorage.setItem('cepr_resources_cloud', JSON.stringify(resources));
-      fetch(`${FIREBASE_BASE_URL}/resources/${newRes.id}.json`, {
+      await fetch(`${FIREBASE_BASE_URL}/resources/${newRes.id}.json`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(newRes),
-      }).catch(() => {});
+      });
     } catch (e) {}
     return newRes;
   },
 
-  deleteResource(id: string): void {
+  async deleteResource(id: string): Promise<void> {
     const resources = this.getResources().filter((r) => r.id !== id);
     try {
       localStorage.setItem('cepr_resources_cloud', JSON.stringify(resources));
-      fetch(`${FIREBASE_BASE_URL}/resources/${id}.json`, { method: 'DELETE' }).catch(() => {});
-      // Re-save total resources array in Firebase
-      fetch(`${FIREBASE_BASE_URL}/resources.json`, {
+      await fetch(`${FIREBASE_BASE_URL}/resources/${id}.json`, { method: 'DELETE' });
+      await fetch(`${FIREBASE_BASE_URL}/resources.json`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(resources),
-      }).catch(() => {});
+      });
     } catch (e) {}
   },
 
@@ -156,7 +155,7 @@ export const DataService = {
     return bookings;
   },
 
-  saveBooking(booking: Omit<Booking, 'id' | 'createdAt' | 'status'> & { id?: string }): Booking {
+  async saveBooking(booking: Omit<Booking, 'id' | 'createdAt' | 'status'> & { id?: string }): Promise<Booking> {
     const bookings = this.getBookings();
     const newBooking: Booking = {
       id: booking.id || `book-${Date.now()}-${Math.random().toString(36).substr(2, 4)}`,
@@ -174,20 +173,20 @@ export const DataService = {
 
     try {
       localStorage.setItem('cepr_bookings_cloud', JSON.stringify(bookings));
-      fetch(`${FIREBASE_BASE_URL}/bookings/${newBooking.id}.json`, {
+      await fetch(`${FIREBASE_BASE_URL}/bookings/${newBooking.id}.json`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(newBooking),
-      }).catch(() => {});
+      });
     } catch (e) {}
     return newBooking;
   },
 
-  deleteBooking(id: string): void {
+  async deleteBooking(id: string): Promise<void> {
     const bookings = this.getBookings().filter((b) => b.id !== id);
     try {
       localStorage.setItem('cepr_bookings_cloud', JSON.stringify(bookings));
-      fetch(`${FIREBASE_BASE_URL}/bookings/${id}.json`, { method: 'DELETE' }).catch(() => {});
+      await fetch(`${FIREBASE_BASE_URL}/bookings/${id}.json`, { method: 'DELETE' });
     } catch (e) {}
   },
 
@@ -207,7 +206,7 @@ export const DataService = {
     return blocks;
   },
 
-  saveBlock(block: Omit<Block, 'id' | 'createdAt'>): Block {
+  async saveBlock(block: Omit<Block, 'id' | 'createdAt'>): Promise<Block> {
     const blocks = this.getBlocks();
     const newBlock: Block = {
       id: `blk-${Date.now()}`,
@@ -218,20 +217,20 @@ export const DataService = {
     blocks.push(newBlock);
     try {
       localStorage.setItem('cepr_blocks_cloud', JSON.stringify(blocks));
-      fetch(`${FIREBASE_BASE_URL}/blocks/${newBlock.id}.json`, {
+      await fetch(`${FIREBASE_BASE_URL}/blocks/${newBlock.id}.json`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(newBlock),
-      }).catch(() => {});
+      });
     } catch (e) {}
     return newBlock;
   },
 
-  deleteBlock(id: string): void {
+  async deleteBlock(id: string): Promise<void> {
     const blocks = this.getBlocks().filter((b) => b.id !== id);
     try {
       localStorage.setItem('cepr_blocks_cloud', JSON.stringify(blocks));
-      fetch(`${FIREBASE_BASE_URL}/blocks/${id}.json`, { method: 'DELETE' }).catch(() => {});
+      await fetch(`${FIREBASE_BASE_URL}/blocks/${id}.json`, { method: 'DELETE' });
     } catch (e) {}
   },
 };
