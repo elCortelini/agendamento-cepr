@@ -2,6 +2,7 @@
 
 import React from 'react';
 import { Resource, Booking, Block, DEFAULT_PERIODS } from '@/lib/types';
+import { DataService } from '@/lib/dataService';
 import { Lock, Clock, Plus, Trash2, Monitor, Tablet, Presentation, Sparkles } from 'lucide-react';
 import { useAuth } from './GoogleAuthProvider';
 
@@ -48,15 +49,8 @@ export function CalendarGrid({
     if (!confirm('Tem certeza que deseja cancelar esta reserva?')) return;
 
     try {
-      const res = await fetch(
-        `/api/bookings?id=${bookingId}&userEmail=${encodeURIComponent(user?.email || '')}&userRole=${user?.role}`,
-        { method: 'DELETE' }
-      );
-      const data = await res.json();
-      if (!res.ok) {
-        alert(data.error || 'Não foi possível excluir.');
-        return;
-      }
+      await DataService.deleteBooking(bookingId);
+      await DataService.syncCloudData();
       if (onRefresh) onRefresh();
     } catch (e) {
       alert('Erro ao excluir a reserva.');
