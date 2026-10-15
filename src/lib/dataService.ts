@@ -184,13 +184,13 @@ export const DataService = {
     return bookings;
   },
 
-  async saveBooking(booking: Omit<Booking, 'id' | 'createdAt' | 'status'> & { id?: string }): Promise<Booking> {
+  async saveBooking(booking: Omit<Booking, 'id' | 'createdAt' | 'status'> & { id?: string; status?: 'active' | 'completed' | 'cancelled' }): Promise<Booking> {
     const bookings = this.getBookings();
     const newBooking: Booking = {
       id: booking.id || `book-${Date.now()}-${Math.random().toString(36).substr(2, 4)}`,
-      ...booking,
-      status: 'active',
+      status: booking.status || 'active',
       createdAt: new Date().toISOString(),
+      ...booking,
     };
 
     const existingIdx = bookings.findIndex((b) => b.id === newBooking.id);

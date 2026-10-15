@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { Booking } from '@/lib/types';
+import { DataService } from '@/lib/dataService';
 import { useAuth } from '@/components/GoogleAuthProvider';
 import {
   CheckSquare,
@@ -25,9 +26,22 @@ export default function MyBookingsPage() {
     if (!user) return;
     setLoading(true);
     try {
-      const res = await fetch(`/api/bookings?email=${encodeURIComponent(user.email)}`);
-      const data = await res.json();
-      setBookings(data.bookings || []);
+      await DataService.syncCloudData();
+      // Get all bookings from DataService (cloud synced)
+      const allBookings = DataService.getBookings();
+      
+      // Filter bookings belonging to current user by email or name match
+      const userEmail = (user.email || '').trim().toLowerCase();
+      const userName = (user.name || '').trim().toLowerCase();
+
+      const myBookings = allBookings.filter((b) => {
+        const bEmail = (b.professorEmail || '').trim().toLowerCase();
+        const bName = (b.professorName || '').trim().toLowerCase();
+
+        return (userEmail && bEmail === userEmail) || (userName && bName === userName);
+      });
+
+      setBookings(myBookings);
     } catch (e) {
       console.error('Error fetching bookings:', e);
     } finally {
@@ -41,15 +55,15 @@ export default function MyBookingsPage() {
 
   const handleToggleUsed = async (bookingId: string, currentWasUsed?: boolean) => {
     try {
-      await fetch('/api/bookings', {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          id: bookingId,
+      const b = bookings.find((item) => item.id === bookingId);
+      if (b) {
+        await DataService.saveBooking({
+          ...b,
           wasUsed: !currentWasUsed,
-        }),
-      });
-      fetchMyBookings();
+          status: !currentWasUsed ? 'completed' : 'active',
+        });
+        await fetchMyBookings();
+      }
     } catch (e) {
       console.error('Error updating status:', e);
     }
@@ -59,10 +73,8 @@ export default function MyBookingsPage() {
     if (!confirm('Tem certeza que deseja cancelar esta reserva?')) return;
 
     try {
-      await fetch(`/api/bookings?id=${bookingId}`, {
-        method: 'DELETE',
-      });
-      fetchMyBookings();
+      await DataService.deleteBooking(bookingId);
+      await fetchMyBookings();
     } catch (e) {
       console.error('Error cancelling booking:', e);
     }
@@ -74,13 +86,13 @@ export default function MyBookingsPage() {
     const icsData = [
       'BEGIN:VCALENDAR',
       'VERSION:2.0',
-      'PRODID:-//GECP Seara//Agenda Recursos//PT',
+      'PRODID:-//CEPR//Agenda Recursos//PT',
       'BEGIN:VEVENT',
       `SUMMARY:${title}`,
       `DESCRIPTION:${description}`,
       `DTSTART;VALUE=DATE:${booking.date.replace(/-/g, '')}`,
       `DTEND;VALUE=DATE:${booking.date.replace(/-/g, '')}`,
-      'LOCATION:Grupo Escolar Carlos de Paula Seara',
+      'LOCATION:Centro Educacional Pedro Rizzi',
       'END:VEVENT',
       'END:VCALENDAR',
     ].join('\r\n');
