@@ -385,32 +385,50 @@ export default function MyBookingsPage() {
                   </td>
                 </tr>
 
-                {morningPeriods.map((period) => (
-                  <tr key={period.id} className="border-t border-slate-200">
-                    <td className="p-1 bg-slate-50 font-bold text-xs text-slate-700 text-center border-r border-slate-200">
-                      <div className="text-indigo-700 font-black text-xs leading-tight">{period.number}</div>
-                      <div className="text-[9px] text-slate-500 font-mono mt-0.5 whitespace-nowrap">
-                        {period.startTime} - {period.endTime}
-                      </div>
-                    </td>
+                {morningPeriods.map((period, pIdx) => {
+                  const isEven = pIdx % 2 === 1;
+                  return (
+                    <tr
+                      key={period.id}
+                      className={`border-t border-slate-200 transition-colors ${
+                        isEven ? 'bg-slate-100/70' : 'bg-white'
+                      }`}
+                    >
+                      <td
+                        className={`p-1 font-bold text-xs text-slate-700 text-center border-r border-slate-200 ${
+                          isEven ? 'bg-slate-200/60' : 'bg-slate-50'
+                        }`}
+                      >
+                        <div className="text-indigo-700 font-black text-xs leading-tight">{period.number}</div>
+                        <div className="text-[9px] text-slate-500 font-mono mt-0.5 whitespace-nowrap">
+                          {period.startTime} - {period.endTime}
+                        </div>
+                      </td>
 
-                    {weekDays.map((day) => {
-                      const dateStr = format(day, 'yyyy-MM-dd');
-                      const isToday = dateStr === todayStr;
+                      {weekDays.map((day) => {
+                        const dateStr = format(day, 'yyyy-MM-dd');
+                        const isToday = dateStr === todayStr;
 
-                      return (
-                        <td
-                          key={dateStr}
-                          className={`p-1 border-l border-slate-200 align-top ${
-                            isToday ? 'bg-amber-50/70 border-amber-300/60' : 'bg-white'
-                          }`}
-                        >
-                          {renderSlotCell(day, period.id)}
-                        </td>
-                      );
-                    })}
-                  </tr>
-                ))}
+                        return (
+                          <td
+                            key={dateStr}
+                            className={`p-1 border-l border-slate-200 align-top ${
+                              isToday
+                                ? isEven
+                                  ? 'bg-amber-100/80 border-amber-300/80'
+                                  : 'bg-amber-50/70 border-amber-300/60'
+                                : isEven
+                                ? 'bg-slate-100/70'
+                                : 'bg-white'
+                            }`}
+                          >
+                            {renderSlotCell(day, period.id)}
+                          </td>
+                        );
+                      })}
+                    </tr>
+                  );
+                })}
 
                 <tr className="bg-indigo-600 text-white font-extrabold text-[10px] uppercase tracking-widest border-t-2 border-indigo-700">
                   <td colSpan={6} className="px-4 py-1 bg-indigo-700">
@@ -418,32 +436,50 @@ export default function MyBookingsPage() {
                   </td>
                 </tr>
 
-                {afternoonPeriods.map((period) => (
-                  <tr key={period.id} className="border-t border-slate-200">
-                    <td className="p-1 bg-slate-50 font-bold text-xs text-slate-700 text-center border-r border-slate-200">
-                      <div className="text-indigo-700 font-black text-xs leading-tight">{period.number}</div>
-                      <div className="text-[9px] text-slate-500 font-mono mt-0.5 whitespace-nowrap">
-                        {period.startTime} - {period.endTime}
-                      </div>
-                    </td>
+                {afternoonPeriods.map((period, pIdx) => {
+                  const isEven = pIdx % 2 === 1;
+                  return (
+                    <tr
+                      key={period.id}
+                      className={`border-t border-slate-200 transition-colors ${
+                        isEven ? 'bg-slate-100/70' : 'bg-white'
+                      }`}
+                    >
+                      <td
+                        className={`p-1 font-bold text-xs text-slate-700 text-center border-r border-slate-200 ${
+                          isEven ? 'bg-slate-200/60' : 'bg-slate-50'
+                        }`}
+                      >
+                        <div className="text-indigo-700 font-black text-xs leading-tight">{period.number}</div>
+                        <div className="text-[9px] text-slate-500 font-mono mt-0.5 whitespace-nowrap">
+                          {period.startTime} - {period.endTime}
+                        </div>
+                      </td>
 
-                    {weekDays.map((day) => {
-                      const dateStr = format(day, 'yyyy-MM-dd');
-                      const isToday = dateStr === todayStr;
+                      {weekDays.map((day) => {
+                        const dateStr = format(day, 'yyyy-MM-dd');
+                        const isToday = dateStr === todayStr;
 
-                      return (
-                        <td
-                          key={dateStr}
-                          className={`p-1 border-l border-slate-200 align-top ${
-                            isToday ? 'bg-amber-50/70 border-amber-300/60' : 'bg-white'
-                          }`}
-                        >
-                          {renderSlotCell(day, period.id)}
-                        </td>
-                      );
-                    })}
-                  </tr>
-                ))}
+                        return (
+                          <td
+                            key={dateStr}
+                            className={`p-1 border-l border-slate-200 align-top ${
+                              isToday
+                                ? isEven
+                                  ? 'bg-amber-100/80 border-amber-300/80'
+                                  : 'bg-amber-50/70 border-amber-300/60'
+                                : isEven
+                                ? 'bg-slate-100/70'
+                                : 'bg-white'
+                            }`}
+                          >
+                            {renderSlotCell(day, period.id)}
+                          </td>
+                        );
+                      })}
+                    </tr>
+                  );
+                })}
               </tbody>
             </table>
           </div>
