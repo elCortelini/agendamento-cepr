@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { Resource, Booking, Block } from '@/lib/types';
+import { Resource, Booking, Block, ResourceType } from '@/lib/types';
 import { DataService } from '@/lib/dataService';
 import { useAuth } from '@/components/GoogleAuthProvider';
 import { BlockModal } from '@/components/BlockModal';
@@ -11,6 +11,7 @@ import {
   Users,
   Lock,
   Plus,
+  Pencil,
   Trash2,
   Download,
   Calendar,
@@ -26,12 +27,13 @@ export default function AdminPanelPage() {
   const [blocks, setBlocks] = useState<Block[]>([]);
   const [loading, setLoading] = useState(true);
 
-  // New Resource Form state
+  // Resource Form state (Create / Edit)
   const [newResName, setNewResName] = useState('');
-  const [newResType, setNewResType] = useState<'room' | 'tablet' | 'equipment'>('room');
+  const [newResType, setNewResType] = useState<ResourceType>('room');
   const [newResQty, setNewResQty] = useState(1);
   const [newResDesc, setNewResDesc] = useState('');
   const [showAddForm, setShowAddForm] = useState(false);
+  const [editingResourceId, setEditingResourceId] = useState<string | null>(null);
 
   // Block modal
   const [isBlockOpen, setIsBlockOpen] = useState(false);
@@ -53,7 +55,26 @@ export default function AdminPanelPage() {
     fetchAdminData();
   }, []);
 
-  const handleCreateResource = (e: React.FormEvent) => {
+  const handleStartEdit = (res: Resource) => {
+    setEditingResourceId(res.id);
+    setNewResName(res.name);
+    setNewResType(res.type);
+    setNewResQty(res.totalQuantity);
+    setNewResDesc(res.description || '');
+    setShowAddForm(true);
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
+  const handleCancelForm = () => {
+    setEditingResourceId(null);
+    setNewResName('');
+    setNewResDesc('');
+    setNewResQty(1);
+    setNewResType('room');
+    setShowAddForm(false);
+  };
+
+  const handleSaveResource = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!newResName.trim()) {
       alert('Por favor, informe o nome do recurso.');
@@ -61,21 +82,31 @@ export default function AdminPanelPage() {
     }
 
     try {
-      DataService.saveResource({
-        name: newResName.trim(),
-        type: newResType,
-        totalQuantity: newResQty || 1,
-        description: newResDesc.trim(),
-      });
+      if (editingResourceId) {
+        const existing = resources.find((r) => r.id === editingResourceId);
+        await DataService.saveResource({
+          id: editingResourceId,
+          name: newResName.trim(),
+          type: newResType,
+          totalQuantity: newResQty || 1,
+          description: newResDesc.trim(),
+          active: existing ? existing.active : true,
+        });
+        alert('Recurso atualizado com sucesso!');
+      } else {
+        await DataService.saveResource({
+          name: newResName.trim(),
+          type: newResType,
+          totalQuantity: newResQty || 1,
+          description: newResDesc.trim(),
+        });
+        alert('Recurso cadastrado com sucesso!');
+      }
 
-      setNewResName('');
-      setNewResDesc('');
-      setNewResQty(1);
-      setShowAddForm(false);
+      handleCancelForm();
       fetchAdminData();
-      alert('Recurso cadastrado com sucesso!');
     } catch (e: any) {
-      console.error('Error adding resource:', e);
+      console.error('Error saving resource:', e);
       alert('Erro ao salvar recurso.');
     }
   };
@@ -245,7 +276,13 @@ export default function AdminPanelPage() {
           <div className="flex justify-between items-center">
             <h3 className="text-lg font-bold text-slate-900">Lista de Recursos Cadastrados</h3>
             <button
-              onClick={() => setShowAddForm(!showAddForm)}
+              onClick={() => {
+                if (showAddForm) {
+                  handleCancelForm();
+                } else {
+                  setShowAddForm(true);
+                }
+              }}
               className="flex items-center gap-1.5 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold px-4 py-2 rounded-xl transition-all"
             >
               <Plus className="w-4 h-4" />
@@ -254,8 +291,17 @@ export default function AdminPanelPage() {
           </div>
 
           {showAddForm && (
-            <form onSubmit={handleCreateResource} className="bg-indigo-50/60 rounded-2xl p-5 border border-indigo-100 space-y-4">
-              <h4 className="text-sm font-extrabold text-indigo-950">Cadastrar Novo Recurso Escolar</h4>
+            <form onSubmit={handleSaveResource} className="bg-indigo-50/60 rounded-2xl p-5 border border-indigo-100 space-y-4">
+              <div className="flex justify-between items-center">
+                <h4 className="text-sm font-extrabold text-indigo-950">
+                  {editingResourceId ? 'Editar Recurso Escolar' : 'Cadastrar Novo Recurso Escolar'}
+                </h4>
+                {editingResourceId && (
+                  <span className="text-[11px] font-bold text-indigo-700 bg-indigo-100 px-2.5 py-0.5 rounded-full">
+                    Modo Edição
+                  </span>
+                )}
+              </div>
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                 <div>
                   <label className="block text-xs font-bold text-slate-700 mb-1">Nome do Recurso *</label>
@@ -279,6 +325,7 @@ export default function AdminPanelPage() {
                     <option value="room">Espaço / Sala / Lab</option>
                     <option value="tablet">Carrinho de Tablets / Chromebooks</option>
                     <option value="equipment">Projetor / Kit de Som / Lousa Digital</option>
+                    <option value="other">Outro</option>
                   </select>
                 </div>
 
@@ -306,12 +353,23 @@ export default function AdminPanelPage() {
                 />
               </div>
 
-              <button
-                type="submit"
-                className="bg-indigo-600 text-white font-bold text-xs px-5 py-2 rounded-xl shadow-md hover:bg-indigo-700 transition-all"
-              >
-                Salvar Recurso
-              </button>
+              <div className="flex items-center gap-2">
+                <button
+                  type="submit"
+                  className="bg-indigo-600 text-white font-bold text-xs px-5 py-2.5 rounded-xl shadow-md hover:bg-indigo-700 transition-all"
+                >
+                  {editingResourceId ? 'Atualizar Recurso' : 'Salvar Recurso'}
+                </button>
+                {editingResourceId && (
+                  <button
+                    type="button"
+                    onClick={handleCancelForm}
+                    className="bg-white border border-slate-300 text-slate-700 font-bold text-xs px-4 py-2.5 rounded-xl hover:bg-slate-50 transition-all"
+                  >
+                    Cancelar Edição
+                  </button>
+                )}
+              </div>
             </form>
           )}
 
@@ -327,37 +385,60 @@ export default function AdminPanelPage() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100 text-xs">
-                {resources.map((res) => (
-                  <tr key={res.id} className="hover:bg-slate-50/60 transition-colors">
-                    <td className="p-4 font-bold text-slate-900">
-                      {res.name}
-                      {res.description && (
-                        <span className="block text-[11px] font-normal text-slate-500 mt-0.5">{res.description}</span>
-                      )}
-                    </td>
-                    <td className="p-4 capitalize text-slate-600 font-semibold">{res.type}</td>
-                    <td className="p-4 font-extrabold text-indigo-700">{res.totalQuantity} un.</td>
-                    <td className="p-4">
-                      <button
-                        onClick={() => handleToggleResourceActive(res.id, res.active)}
-                        className={`px-2.5 py-1 rounded-full text-[10px] font-extrabold ${
-                          res.active ? 'bg-emerald-100 text-emerald-800' : 'bg-slate-200 text-slate-600'
-                        }`}
-                      >
-                        {res.active ? 'Ativo' : 'Inativo'}
-                      </button>
-                    </td>
-                    <td className="p-4 text-right">
-                      <button
-                        onClick={() => handleDeleteResource(res.id)}
-                        className="text-rose-600 hover:bg-rose-50 p-2 rounded-lg transition-colors"
-                        title="Excluir recurso"
-                      >
-                        <Trash2 className="w-4 h-4" />
-                      </button>
-                    </td>
-                  </tr>
-                ))}
+                {resources.map((res) => {
+                  const isEditing = editingResourceId === res.id;
+                  return (
+                    <tr
+                      key={res.id}
+                      className={`transition-colors ${
+                        isEditing ? 'bg-indigo-50/70 border-l-4 border-l-indigo-600' : 'hover:bg-slate-50/60'
+                      }`}
+                    >
+                      <td className="p-4 font-bold text-slate-900">
+                        {res.name}
+                        {res.description && (
+                          <span className="block text-[11px] font-normal text-slate-500 mt-0.5">{res.description}</span>
+                        )}
+                      </td>
+                      <td className="p-4 capitalize text-slate-600 font-semibold">{res.type}</td>
+                      <td className="p-4 font-extrabold text-indigo-700">{res.totalQuantity} un.</td>
+                      <td className="p-4">
+                        <button
+                          onClick={() => handleToggleResourceActive(res.id, res.active)}
+                          className={`px-2.5 py-1 rounded-full text-[10px] font-extrabold ${
+                            res.active ? 'bg-emerald-100 text-emerald-800' : 'bg-slate-200 text-slate-600'
+                          }`}
+                        >
+                          {res.active ? 'Ativo' : 'Inativo'}
+                        </button>
+                      </td>
+                      <td className="p-4 text-right">
+                        <div className="flex items-center justify-end gap-1">
+                          <button
+                            onClick={() => handleStartEdit(res)}
+                            className={`p-2 rounded-lg transition-colors ${
+                              isEditing
+                                ? 'bg-indigo-600 text-white shadow-sm'
+                                : 'text-indigo-600 hover:bg-indigo-50'
+                            }`}
+                            title="Editar recurso"
+                            aria-label={`Editar ${res.name}`}
+                          >
+                            <Pencil className="w-4 h-4" />
+                          </button>
+                          <button
+                            onClick={() => handleDeleteResource(res.id)}
+                            className="text-rose-600 hover:bg-rose-50 p-2 rounded-lg transition-colors"
+                            title="Excluir recurso"
+                            aria-label={`Excluir ${res.name}`}
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })}
               </tbody>
             </table>
           </div>
