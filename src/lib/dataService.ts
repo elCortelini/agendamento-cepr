@@ -14,7 +14,7 @@ const INITIAL_RESOURCES: Resource[] = [
   },
   {
     id: 'res-lousa-1',
-    name: 'TV Lousa Digital 1 (1º Andar)',
+    name: 'TV Lousa Digital B',
     type: 'equipment',
     totalQuantity: 1,
     description: 'Lousa digital interativa 1.',
@@ -22,7 +22,7 @@ const INITIAL_RESOURCES: Resource[] = [
   },
   {
     id: 'res-lousa-2',
-    name: 'TV Lousa Digital 2 (2º Andar)',
+    name: 'TV Lousa Digital A',
     type: 'equipment',
     totalQuantity: 1,
     description: 'Lousa digital interativa 2.',
@@ -40,14 +40,17 @@ const INITIAL_RESOURCES: Resource[] = [
 
 let lastSyncStatus: { ok: boolean; error?: string } = { ok: true };
 
-// Helper to parse Firebase array/object
-function parseFirebaseData<T>(data: any): T[] {
+// Helper to parse Firebase array/object with deduplication by id
+function parseFirebaseData<T extends { id?: string }>(data: any): T[] {
   if (!data) return [];
-  if (Array.isArray(data)) return data.filter(Boolean);
-  if (typeof data === 'object') {
-    return Object.values(data).filter(Boolean) as T[];
+  const rawList = Array.isArray(data) ? data.filter(Boolean) : (Object.values(data).filter(Boolean) as T[]);
+  const byId = new Map<string, T>();
+  for (const item of rawList) {
+    if (item && typeof item === 'object' && item.id) {
+      byId.set(item.id, item);
+    }
   }
-  return [];
+  return byId.size > 0 ? Array.from(byId.values()) : rawList;
 }
 
 async function getAuthParam(): Promise<string> {
@@ -157,11 +160,6 @@ export const DataService = {
       localStorage.setItem('cepr_resources_cloud', JSON.stringify(resources));
       const authQuery = await getAuthParam();
       await fetch(`${FIREBASE_BASE_URL}/resources/${id}.json${authQuery}`, { method: 'DELETE' });
-      await fetch(`${FIREBASE_BASE_URL}/resources.json${authQuery}`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(resources),
-      });
     } catch (e) {}
   },
 

@@ -2,10 +2,10 @@ import type { Metadata, Viewport } from 'next';
 import './globals.css';
 import { AuthProvider } from '@/components/GoogleAuthProvider';
 import { AuthGuard } from '@/components/AuthGuard';
-import { Sidebar } from '@/components/Sidebar';
+import { TopBar } from '@/components/TopBar';
 
 export const metadata: Metadata = {
-  title: 'Agenda de Recursos - CE Pedro Rizzi',
+  title: 'Integra Rizzi - Agenda de Recursos | CE Pedro Rizzi',
   description: 'Visualize e gerencie as reservas de recursos do Centro Educacional Pedro Rizzi.',
 };
 
@@ -22,12 +22,12 @@ export default function RootLayout({
 }) {
   return (
     <html lang="pt-BR">
-      <body className="antialiased bg-[#f4f6fa] text-slate-900 min-h-screen flex flex-col md:flex-row">
+      <body className="antialiased bg-[#f4f6fa] text-slate-900 min-h-screen flex flex-col">
         <AuthProvider>
           <AuthGuard>
-            <Sidebar />
-            <div className="flex-1 flex flex-col min-w-0 overflow-y-auto">
-              <main className="p-3 sm:p-6 md:p-8 max-w-[1600px] w-full mx-auto">
+            <TopBar />
+            <div className="flex-1 flex flex-col min-w-0 w-full">
+              <main className="p-2 sm:p-4 md:p-5 w-full">
                 {children}
               </main>
             </div>
