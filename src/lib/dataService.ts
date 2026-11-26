@@ -1,4 +1,4 @@
-import { Resource, Booking, Block } from './types';
+import { Resource, Booking, Block, DEFAULT_PERIODS } from './types';
 import { auth } from './firebase';
 
 const FIREBASE_BASE_URL = 'https://agendamento-cepr-default-rtdb.firebaseio.com';
@@ -245,7 +245,7 @@ export const DataService = {
   async saveBlock(block: Omit<Block, 'id' | 'createdAt'>): Promise<Block> {
     const blocks = this.getBlocks();
     const newBlock: Block = {
-      id: `blk-${Date.now()}`,
+      id: `blk-${Date.now()}-${Math.random().toString(36).substr(2, 5)}`,
       ...block,
       createdAt: new Date().toISOString(),
     };
@@ -270,5 +270,74 @@ export const DataService = {
       const authQuery = await getAuthParam();
       await fetch(`${FIREBASE_BASE_URL}/blocks/${id}.json${authQuery}`, { method: 'DELETE' });
     } catch (e) {}
+  },
+
+  async splitAndRemovePeriodFromBlock(blockId: string, periodIdToUnblock: string): Promise<void> {
+    const blocks = this.getBlocks();
+    const blockIndex = blocks.findIndex((b) => b.id === blockId);
+    if (blockIndex === -1) return;
+
+    const block = blocks[blockIndex];
+
+    // Determina quais períodos faziam parte deste bloqueio
+    let coveredPeriods = DEFAULT_PERIODS;
+    if (block.periodId === 'matutino') {
+      coveredPeriods = DEFAULT_PERIODS.filter((p) => p.shift === 'matutino');
+    } else if (block.periodId === 'vespertino') {
+      coveredPeriods = DEFAULT_PERIODS.filter((p) => p.shift === 'vespertino');
+    } else if (block.periodId !== 'all_day') {
+      coveredPeriods = DEFAULT_PERIODS.filter((p) => p.id === block.periodId);
+    }
+
+    // Filtra removendo apenas a aula que o usuário deseja desbloquear
+    const remainingPeriods = coveredPeriods.filter((p) => p.id !== periodIdToUnblock);
+
+    // Se não sobrar nenhum período, apenas exclui o bloqueio por completo
+    if (remainingPeriods.length === 0) {
+      await this.deleteBlock(blockId);
+      return;
+    }
+
+    // Cria novos bloqueios individuais para os períodos restantes
+    const newBlocks: Block[] = remainingPeriods.map((p, idx) => ({
+      id: `blk-${Date.now()}-${idx}-${Math.random().toString(36).substr(2, 5)}`,
+      resourceId: block.resourceId,
+      resourceName: block.resourceName,
+      date: block.date,
+      periodId: p.id,
+      reason: block.reason,
+      createdBy: block.createdBy || 'admin',
+      createdAt: new Date().toISOString(),
+    }));
+
+    // Atualiza o cache local
+    const updatedBlocks = [
+      ...blocks.slice(0, blockIndex),
+      ...blocks.slice(blockIndex + 1),
+      ...newBlocks,
+    ];
+
+    try {
+      localStorage.setItem('cepr_blocks_cloud', JSON.stringify(updatedBlocks));
+      const authQuery = await getAuthParam();
+
+      // Atualização atômica no Firebase Realtime DB via PATCH:
+      // O ID do bloco antigo com valor null é deletado; os novos IDs individuais são salvos
+      const patchPayload: Record<string, any> = {
+        [blockId]: null,
+      };
+      for (const nb of newBlocks) {
+        patchPayload[nb.id] = nb;
+      }
+
+      await fetch(`${FIREBASE_BASE_URL}/blocks.json${authQuery}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(patchPayload),
+      });
+    } catch (e) {
+      console.error('Error splitting block:', e);
+      throw e;
+    }
   },
 };

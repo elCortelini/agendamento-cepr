@@ -1,10 +1,10 @@
 'use client';
 
-import React from 'react';
+import React, { useState } from 'react';
 import { Resource, Booking, Block, DEFAULT_PERIODS } from '@/lib/types';
 import { DataService } from '@/lib/dataService';
 import { useAuth } from './GoogleAuthProvider';
-import { Lock, Plus, Monitor, Trash2, Edit3 } from 'lucide-react';
+import { Lock, Unlock, Plus, Monitor, Trash2, Edit3 } from 'lucide-react';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 
@@ -33,6 +33,13 @@ export function WeekCalendarGrid({
 
   const todayStr = format(new Date(), 'yyyy-MM-dd');
 
+  const [unblockModal, setUnblockModal] = useState<{
+    block: Block;
+    periodId: string;
+    dayDate: Date;
+  } | null>(null);
+  const [isUnblocking, setIsUnblocking] = useState(false);
+
   const handleDeleteBooking = async (bookingId: string, professorName: string) => {
     const isSelf = user?.role === 'admin' ? 'como Administrador' : 'sua própria reserva';
     if (!confirm(`Confirmar exclusão da reserva de ${professorName} (${isSelf})?`)) return;
@@ -46,16 +53,57 @@ export function WeekCalendarGrid({
     }
   };
 
-  const handleDeleteBlock = async (blockId: string) => {
+  const handleInitiateUnblock = async (block: Block, periodId: string, dayDate: Date) => {
     if (user?.role !== 'admin') return;
-    if (!confirm('Confirmar remoção deste bloqueio administrativo?')) return;
 
+    const isMultiPeriod =
+      block.periodId === 'all_day' ||
+      block.periodId === 'matutino' ||
+      block.periodId === 'vespertino';
+
+    if (isMultiPeriod) {
+      setUnblockModal({ block, periodId, dayDate });
+    } else {
+      const periodObj = DEFAULT_PERIODS.find((p) => p.id === periodId);
+      if (!confirm(`Confirmar remoção do bloqueio para ${periodObj?.name || 'esta aula'}?`)) return;
+
+      try {
+        await DataService.deleteBlock(block.id);
+        await DataService.syncCloudData();
+        onRefresh();
+      } catch (e) {
+        alert('Erro ao remover o bloqueio.');
+      }
+    }
+  };
+
+  const handleUnblockOnlyThisSlot = async () => {
+    if (!unblockModal) return;
+    setIsUnblocking(true);
     try {
-      await DataService.deleteBlock(blockId);
+      await DataService.splitAndRemovePeriodFromBlock(unblockModal.block.id, unblockModal.periodId);
       await DataService.syncCloudData();
+      setUnblockModal(null);
       onRefresh();
     } catch (e) {
-      alert('Erro ao remover o bloqueio.');
+      alert('Erro ao desbloquear esta aula.');
+    } finally {
+      setIsUnblocking(false);
+    }
+  };
+
+  const handleUnblockEntireScope = async () => {
+    if (!unblockModal) return;
+    setIsUnblocking(true);
+    try {
+      await DataService.deleteBlock(unblockModal.block.id);
+      await DataService.syncCloudData();
+      setUnblockModal(null);
+      onRefresh();
+    } catch (e) {
+      alert('Erro ao remover o bloqueio completo.');
+    } finally {
+      setIsUnblocking(false);
     }
   };
 
@@ -107,7 +155,7 @@ export function WeekCalendarGrid({
             </div>
             {user?.role === 'admin' ? (
               <button
-                onClick={() => handleDeleteBlock(allResourcesBlock.id)}
+                onClick={() => handleInitiateUnblock(allResourcesBlock, periodId, dayDate)}
                 className="text-slate-400 hover:text-rose-600 p-0.5 rounded transition-colors"
                 title="Remover Bloqueio Geral (Admin)"
               >
@@ -140,7 +188,7 @@ export function WeekCalendarGrid({
                       </div>
                       {user?.role === 'admin' ? (
                         <button
-                          onClick={() => handleDeleteBlock(sb.id)}
+                          onClick={() => handleInitiateUnblock(sb, periodId, dayDate)}
                           className="text-amber-600 hover:text-rose-600 p-0.5 rounded transition-colors shrink-0"
                           title="Remover Bloqueio de Recurso (Admin)"
                         >
@@ -372,6 +420,119 @@ export function WeekCalendarGrid({
           </tbody>
         </table>
       </div>
+      {/* Modal de Confirmação de Desbloqueio Seletivo */}
+      {unblockModal && (
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-xs z-50 flex items-center justify-center p-4 font-sans animate-in fade-in">
+          <div className="bg-white rounded-3xl max-w-md w-full p-6 shadow-2xl border border-slate-100 relative">
+            <button
+              onClick={() => !isUnblocking && setUnblockModal(null)}
+              disabled={isUnblocking}
+              className="absolute top-4 right-4 text-slate-400 hover:text-slate-600 font-bold w-8 h-8 rounded-full bg-slate-100 flex items-center justify-center transition-colors"
+            >
+              ✕
+            </button>
+
+            <div className="flex items-center space-x-3 mb-5">
+              <div className="w-12 h-12 rounded-2xl bg-amber-100 text-amber-700 flex items-center justify-center shadow-inner shrink-0">
+                <Unlock className="w-6 h-6" />
+              </div>
+              <div>
+                <h3 className="text-lg font-black text-slate-900 leading-tight">Desbloquear Horário</h3>
+                <p className="text-xs text-slate-500 font-medium mt-0.5">
+                  Este horário faz parte de um bloqueio com múltiplas aulas
+                </p>
+              </div>
+            </div>
+
+            {/* Detalhes do Horário Selecionado */}
+            <div className="bg-slate-50 border border-slate-200/80 rounded-2xl p-3.5 mb-5 space-y-2 text-xs">
+              <div className="flex justify-between items-center text-slate-700">
+                <span className="font-semibold text-slate-500">Data:</span>
+                <span className="font-bold capitalize">
+                  {format(unblockModal.dayDate, "EEEE, dd/MM/yyyy", { locale: ptBR })}
+                </span>
+              </div>
+              <div className="flex justify-between items-center text-slate-700">
+                <span className="font-semibold text-slate-500">Aula Selecionada:</span>
+                <span className="font-bold text-indigo-700">
+                  {DEFAULT_PERIODS.find((p) => p.id === unblockModal.periodId)?.name || unblockModal.periodId}
+                </span>
+              </div>
+              <div className="flex justify-between items-center text-slate-700">
+                <span className="font-semibold text-slate-500">Escopo Atual:</span>
+                <span className="font-bold bg-amber-100 text-amber-800 px-2 py-0.5 rounded-full text-[11px]">
+                  {unblockModal.block.periodId === 'all_day'
+                    ? '🔒 Dia Inteiro (8 Aulas)'
+                    : unblockModal.block.periodId === 'matutino'
+                    ? '☀️ Turno Manhã (4 Aulas)'
+                    : unblockModal.block.periodId === 'vespertino'
+                    ? '🌙 Turno Tarde (4 Aulas)'
+                    : 'Período Individual'}
+                </span>
+              </div>
+              {unblockModal.block.reason && (
+                <div className="pt-1 border-t border-slate-200/60 text-slate-600 italic">
+                  Motivo: "{unblockModal.block.reason}"
+                </div>
+              )}
+            </div>
+
+            {/* Ações Cognitivas Claras */}
+            <div className="space-y-3">
+              {/* Opção 1: Desbloquear APENAS esta aula (Recomendada / Destaque de Von Restorff) */}
+              <button
+                type="button"
+                onClick={handleUnblockOnlyThisSlot}
+                disabled={isUnblocking}
+                className="w-full min-h-[50px] p-3.5 rounded-2xl bg-indigo-600 hover:bg-indigo-700 active:scale-[0.99] text-white font-bold text-xs flex items-center justify-between shadow-md transition-all disabled:opacity-50"
+              >
+                <div className="text-left">
+                  <div className="text-sm font-extrabold flex items-center gap-1.5">
+                    <Unlock className="w-4 h-4" />
+                    <span>Desbloquear APENAS esta aula</span>
+                  </div>
+                  <div className="text-[11px] font-normal text-indigo-100 mt-0.5">
+                    Libera somente esta aula e mantém as demais bloqueadas
+                  </div>
+                </div>
+                <span className="bg-indigo-500/80 text-[10px] uppercase font-black px-2 py-1 rounded-lg shrink-0 ml-2">
+                  Recomendado
+                </span>
+              </button>
+
+              {/* Opção 2: Desbloquear o Dia/Turno Inteiro */}
+              <button
+                type="button"
+                onClick={handleUnblockEntireScope}
+                disabled={isUnblocking}
+                className="w-full min-h-[46px] p-3 rounded-2xl bg-rose-50 hover:bg-rose-100 active:scale-[0.99] text-rose-700 border border-rose-200 font-bold text-xs flex items-center justify-between transition-all disabled:opacity-50"
+              >
+                <div className="text-left">
+                  <div className="text-xs font-bold text-rose-800 flex items-center gap-1.5">
+                    <Trash2 className="w-3.5 h-3.5" />
+                    <span>
+                      Desbloquear {unblockModal.block.periodId === 'all_day' ? 'o DIA INTEIRO' : 'o TURNO INTEIRO'}
+                    </span>
+                  </div>
+                  <div className="text-[10px] font-normal text-rose-600 mt-0.5">
+                    Exclui o bloqueio por completo e libera todas as aulas
+                  </div>
+                </div>
+              </button>
+
+              {/* Botão Cancelar */}
+              <button
+                type="button"
+                onClick={() => setUnblockModal(null)}
+                disabled={isUnblocking}
+                className="w-full py-2.5 rounded-xl text-slate-500 hover:text-slate-800 font-semibold text-xs transition-colors"
+              >
+                Cancelar
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
